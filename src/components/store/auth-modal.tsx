@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Mail, Lock, User, Phone, Sparkles } from 'lucide-react'
+import { X, Mail, Lock, User, Phone } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -19,13 +19,6 @@ export function AuthModal() {
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({ email: '', password: '', name: '', phone: '' })
-
-  // Pre-fill demo credentials hint
-  useEffect(() => {
-    if (mode === 'login' && !form.email) {
-      // Show demo hint but don't auto-fill
-    }
-  }, [mode])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -59,14 +52,6 @@ export function AuthModal() {
       toast({ title: 'Error', description: e.message, variant: 'destructive' })
     } finally {
       setLoading(false)
-    }
-  }
-
-  const fillDemo = (type: 'admin' | 'customer') => {
-    if (type === 'admin') {
-      setForm({ email: 'admin@rangbirangi.com', password: 'admin123', name: '', phone: '' })
-    } else {
-      setForm({ email: 'customer@demo.com', password: 'demo123', name: '', phone: '' })
     }
   }
 
@@ -185,35 +170,6 @@ export function AuthModal() {
                 >
                   {loading ? 'Please wait...' : mode === 'login' ? 'Login' : 'Create Account'}
                 </Button>
-
-                {/* Demo credentials */}
-                {mode === 'login' && (
-                  <div className="pt-3 border-t border-border space-y-2">
-                    <p className="text-xs text-muted-foreground text-center">
-                      Demo credentials (click to fill):
-                    </p>
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => fillDemo('admin')}
-                        className="flex-1 text-xs"
-                      >
-                        <Sparkles className="h-3 w-3 mr-1 text-accent" /> Admin
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => fillDemo('customer')}
-                        className="flex-1 text-xs"
-                      >
-                        <User className="h-3 w-3 mr-1" /> Customer
-                      </Button>
-                    </div>
-                  </div>
-                )}
 
                 <p className="text-xs text-center text-muted-foreground">
                   {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}

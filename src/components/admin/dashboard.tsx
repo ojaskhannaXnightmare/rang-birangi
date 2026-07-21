@@ -19,6 +19,7 @@ const PIE_COLORS = ['#D4AF37', '#7B1E3A', '#A1A1AA', '#F59E0B', '#EF4444', '#8B5
 export function AdminDashboard() {
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [dbStatus, setDbStatus] = useState<any>(null)
 
   useEffect(() => {
     fetch('/api/admin/dashboard')
@@ -28,6 +29,12 @@ export function AdminDashboard() {
         setLoading(false)
       })
       .catch(() => setLoading(false))
+
+    // DB health check
+    fetch('/api/health')
+      .then((r) => r.json())
+      .then((d) => setDbStatus(d))
+      .catch(() => {})
   }, [])
 
   if (loading) {
@@ -55,6 +62,34 @@ export function AdminDashboard() {
 
   return (
     <div className="space-y-6">
+      {/* System health banner */}
+      {dbStatus && (
+        <div className="p-4 rounded-xl glass border border-gold/20 flex flex-wrap items-center gap-4 text-sm">
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${
+              dbStatus.checks?.mongodb?.connected ? 'bg-green-500' :
+              dbStatus.checks?.mongodb?.configured ? 'bg-yellow-500' : 'bg-blue-500'
+            } animate-pulse`} />
+            <span className="text-muted-foreground">Database:</span>
+            <span className="font-medium">
+              {dbStatus.checks?.mongodb?.connected
+                ? `MongoDB Atlas · ${dbStatus.checks.mongodb.dbName}`
+                : dbStatus.checks?.mongodb?.configured
+                  ? 'MongoDB (connecting...)'
+                  : 'SQLite (Prisma fallback)'}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-green-500" />
+            <span className="text-muted-foreground">Uploads:</span>
+            <span className="font-medium">{dbStatus.checks?.uploads?.exists ? 'Ready' : 'Not configured'}</span>
+          </div>
+          <div className="flex items-center gap-2 ml-auto">
+            <span className="text-xs text-muted-foreground">v{dbStatus.version}</span>
+          </div>
+        </div>
+      )}
+
       {/* Stats cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard

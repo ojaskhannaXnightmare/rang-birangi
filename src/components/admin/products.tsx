@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Plus, Search, Pencil, Trash2, Eye, X, Package, Loader2,
+  Plus, Search, Pencil, Trash2, Eye, Package, Loader2,
+  CheckSquare, Square, X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -20,6 +21,7 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import { formatINR, type ProductDTO } from '@/lib/helpers'
 import { useUIStore } from '@/stores/ui-store'
+import { ImageUpload } from './image-upload'
 
 export function AdminProducts() {
   const [products, setProducts] = useState<ProductDTO[]>([])
@@ -29,20 +31,22 @@ export function AdminProducts() {
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [editing, setEditing] = useState<ProductDTO | null>(null)
   const [showForm, setShowForm] = useState(false)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [bulkDeleting, setBulkDeleting] = useState(false)
   const { toast } = useToast()
   const setView = useUIStore((s) => s.setView)
 
-  const load = () => {
-    setLoading(true)
-    const params = new URLSearchParams()
-    if (search) params.set('search', search)
-    if (categoryFilter !== 'all') params.set('category', categoryFilter)
-    fetch(`/api/admin/products?${params.toString()}`)
-      .then((r) => r.json())
-      .then((d) => {
-        setProducts(d.products || [])
-        setLoading(false)
-      })
+  const load = async () => {
+    try {
+      const params = new URLSearchParams()
+      if (search) params.set('search', search)
+      if (categoryFilter !== 'all') params.set('category', categoryFilter)
+      const r = await fetch(`/api/admin/products?${params.toString()}`)
+      const d = await r.json()
+      setProducts(d.products || [])
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
@@ -72,6 +76,39 @@ export function AdminProducts() {
     load()
   }
 
+  const toggleSelect = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const selectAll = () => {
+    if (selected.size === products.length) {
+      setSelected(new Set())
+    } else {
+      setSelected(new Set(products.map((p) => p.id)))
+    }
+  }
+
+  const handleBulkDelete = async () => {
+    if (selected.size === 0) return
+    if (!confirm(`Delete ${selected.size} selected product(s)? This cannot be undone.`)) return
+    setBulkDeleting(true)
+    try {
+      for (const id of selected) {
+        await fetch(`/api/admin/products/${id}`, { method: 'DELETE' })
+      }
+      toast({ title: `${selected.size} product(s) deleted` })
+      setSelected(new Set())
+      load()
+    } finally {
+      setBulkDeleting(false)
+    }
+  }
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -80,12 +117,25 @@ export function AdminProducts() {
           <h2 className="text-2xl font-display font-bold">Products ({products.length})</h2>
           <p className="text-sm text-muted-foreground">Manage your product catalog</p>
         </div>
-        <Button
-          onClick={() => { setEditing(null); setShowForm(true) }}
-          className="bg-luxe-gradient"
-        >
-          <Plus className="h-4 w-4 mr-2" /> Add Product
-        </Button>
+        <div className="flex gap-2">
+          {selected.size > 0 && (
+            <Button
+              onClick={handleBulkDelete}
+              disabled={bulkDeleting}
+              variant="outline"
+              className="border-red-500/40 text-red-400 hover:bg-red-500/10"
+            >
+              {bulkDeleting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
+              Delete ({selected.size})
+            </Button>
+          )}
+          <Button
+            onClick={() => { setEditing(null); setShowForm(true) }}
+            className="bg-luxe-gradient"
+          >
+            <Plus className="h-4 w-4 mr-2" /> Add Product
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -112,6 +162,35 @@ export function AdminProducts() {
         </Select>
       </div>
 
+      {/* Bulk select bar */}
+      {products.length > 0 && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <button
+            onClick={selectAll}
+            className="flex items-center gap-1.5 hover:text-foreground"
+          >
+            {selected.size === products.length && products.length > 0 ? (
+              <CheckSquare className="h-4 w-4 text-accent" />
+            ) : (
+              <Square className="h-4 w-4" />
+            )}
+            {selected.size === products.length && products.length > 0 ? 'Deselect All' : 'Select All'}
+          </button>
+          {selected.size > 0 && (
+            <>
+              <span>·</span>
+              <span className="text-accent">{selected.size} selected</span>
+              <button
+                onClick={() => setSelected(new Set())}
+                className="ml-2 hover:text-foreground"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
       {/* Table */}
       {loading ? (
         <div className="space-y-2">
@@ -123,6 +202,12 @@ export function AdminProducts() {
         <div className="p-8 rounded-xl glass border border-gold/20 text-center">
           <Package className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
           <p className="text-muted-foreground">No products found.</p>
+          <Button
+            onClick={() => { setEditing(null); setShowForm(true) }}
+            className="mt-4 bg-luxe-gradient"
+          >
+            <Plus className="h-4 w-4 mr-2" /> Add Your First Product
+          </Button>
         </div>
       ) : (
         <div className="space-y-2">
@@ -132,9 +217,23 @@ export function AdminProducts() {
               layout
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-4 rounded-xl glass border border-gold/10 hover:border-gold/30 transition-colors"
+              className={`p-4 rounded-xl glass border transition-colors ${
+                selected.has(p.id) ? 'border-accent bg-accent/5' : 'border-gold/10 hover:border-gold/30'
+              }`}
             >
               <div className="flex items-center gap-3">
+                {/* Checkbox */}
+                <button
+                  onClick={() => toggleSelect(p.id)}
+                  className="flex-shrink-0"
+                >
+                  {selected.has(p.id) ? (
+                    <CheckSquare className="h-5 w-5 text-accent" />
+                  ) : (
+                    <Square className="h-5 w-5 text-muted-foreground hover:text-foreground" />
+                  )}
+                </button>
+
                 <img
                   src={p.images[0]}
                   alt={p.name}
@@ -224,13 +323,13 @@ function ProductForm({
       name: '', sku: '', description: '', material: '', weight: '',
       careInstructions: '', categoryId: categories[0]?.id || '',
       price: '', compareAtPrice: '', discountPercent: '0', stock: '0',
-      images: [''], videos: [], colors: [], sizes: [],
+      images: [], videos: [], colors: [], sizes: [],
       tags: [], isFeatured: false, isTrending: false, isNewArrival: false,
       isFlashSale: false, isBestSeller: false, isHandmade: false,
       isPublished: true, seoTitle: '', seoDescription: '',
     }
   )
-  const [imagesText, setImagesText] = useState((product?.images || ['']).join('\n'))
+  const [imageList, setImageList] = useState<string[]>(product?.images || [])
   const [colorsText, setColorsText] = useState((product?.colors || []).join(','))
   const [sizesText, setSizesText] = useState((product?.sizes || []).join(','))
   const [tagsText, setTagsText] = useState((product?.tags || []).join(','))
@@ -238,9 +337,17 @@ function ProductForm({
   const { toast } = useToast()
 
   const handleSave = async () => {
+    if (!form.name || !form.sku || !form.categoryId || !form.price) {
+      toast({ title: 'Missing required fields', description: 'Name, SKU, Category, and Price are required.', variant: 'destructive' })
+      return
+    }
+    if (imageList.length === 0) {
+      toast({ title: 'At least one image required', description: 'Please upload at least one product image.', variant: 'destructive' })
+      return
+    }
+
     setSaving(true)
     try {
-      const images = imagesText.split('\n').map((s) => s.trim()).filter(Boolean)
       const colors = colorsText.split(',').map((s) => s.trim()).filter(Boolean)
       const sizes = sizesText.split(',').map((s) => s.trim()).filter(Boolean)
       const tags = tagsText.split(',').map((s) => s.trim()).filter(Boolean)
@@ -251,7 +358,7 @@ function ProductForm({
         compareAtPrice: form.compareAtPrice ? String(form.compareAtPrice) : '',
         discountPercent: String(form.discountPercent || '0'),
         stock: String(form.stock || '0'),
-        images, colors, sizes, tags,
+        images: imageList, colors, sizes, tags,
       }
 
       const url = product
@@ -265,7 +372,7 @@ function ProductForm({
       })
       const data = await res.json()
       if (res.ok) {
-        toast({ title: product ? 'Product updated' : 'Product created' })
+        toast({ title: product ? 'Product updated' : 'Product created', description: form.name })
         onSaved()
       } else {
         toast({ title: 'Error', description: data.error, variant: 'destructive' })
@@ -286,7 +393,15 @@ function ProductForm({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-3">
+        <div className="space-y-4">
+          {/* Image upload - PROMINENT at top */}
+          <ImageUpload
+            images={imageList}
+            onChange={setImageList}
+            maxImages={10}
+            label="Product Images *"
+          />
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="text-xs text-muted-foreground mb-1 block">Name *</Label>
@@ -351,16 +466,6 @@ function ProductForm({
             </div>
           </div>
 
-          <div>
-            <Label className="text-xs text-muted-foreground mb-1 block">Image URLs (one per line)</Label>
-            <textarea
-              value={imagesText}
-              onChange={(e) => setImagesText(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg bg-secondary/50 border border-border focus:border-accent outline-none text-sm min-h-[60px]"
-              placeholder="https://..."
-            />
-          </div>
-
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="text-xs text-muted-foreground mb-1 block">Colors (comma-separated)</Label>
@@ -406,7 +511,7 @@ function ProductForm({
             </div>
           </div>
 
-          <div className="flex gap-2 pt-3 border-t border-border">
+          <div className="flex gap-2 pt-3 border-t border-border sticky bottom-0 bg-background/95 backdrop-blur">
             <Button variant="outline" onClick={onClose} className="flex-1">Cancel</Button>
             <Button onClick={handleSave} disabled={saving} className="flex-1 bg-luxe-gradient">
               {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
