@@ -72,3 +72,7 @@ coverage/
 *.swp
 *.swo
 *~
+
+# User pasted images (chat artifacts)
+upload/
+pasted_image_*.png

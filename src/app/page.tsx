@@ -16,6 +16,7 @@ import { CheckoutView } from '@/components/store/checkout-view'
 import { OrderSuccessView } from '@/components/store/order-success-view'
 import { AuthModal } from '@/components/store/auth-modal'
 import { CustomerDashboard } from '@/components/store/customer-dashboard'
+import { FloatingAdminButton } from '@/components/store/floating-admin-button'
 import { AdminPanel } from '@/components/admin/admin-panel'
 
 export default function Home() {
@@ -45,6 +46,7 @@ export default function Home() {
       <>
         <AdminPanel tab={view.tab} />
         <AuthModal />
+        <FloatingAdminButton />
       </>
     )
   }
@@ -74,6 +76,7 @@ export default function Home() {
       {/* Overlays */}
       <CartDrawer />
       <AuthModal />
+      <FloatingAdminButton />
     </div>
   )
 }

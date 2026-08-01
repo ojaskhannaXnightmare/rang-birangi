@@ -24,14 +24,17 @@ import { getFirestore, Firestore } from 'firebase-admin/firestore'
 import { getStorage, Storage } from 'firebase-admin/storage'
 
 function getServiceAccount(): { projectId: string; clientEmail: string; privateKey: string } | null {
-  // Option 1: Full JSON in one env var
+  // Option 1: Full JSON in one env var (recommended for Vercel)
   if (process.env.FIREBASE_SERVICE_ACCOUNT) {
     try {
       const parsed = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
+      // CRITICAL: Vercel stores env vars as single lines, so `\n` in the private key
+      // becomes literal `\n` text. Replace with actual newlines.
+      const privateKey = (parsed.private_key || '').replace(/\\n/g, '\n')
       return {
         projectId: parsed.project_id,
         clientEmail: parsed.client_email,
-        privateKey: parsed.private_key,
+        privateKey,
       }
     } catch {
       // fall through to option 2
