@@ -67,22 +67,22 @@ export function AdminDashboard() {
         <div className="p-4 rounded-xl glass border border-gold/20 flex flex-wrap items-center gap-4 text-sm">
           <div className="flex items-center gap-2">
             <div className={`w-2 h-2 rounded-full ${
-              dbStatus.checks?.mongodb?.connected ? 'bg-green-500' :
-              dbStatus.checks?.mongodb?.configured ? 'bg-yellow-500' : 'bg-blue-500'
+              dbStatus.checks?.firebase?.connected ? 'bg-green-500' :
+              dbStatus.checks?.firebase?.configured ? 'bg-yellow-500' : 'bg-red-500'
             } animate-pulse`} />
             <span className="text-muted-foreground">Database:</span>
             <span className="font-medium">
-              {dbStatus.checks?.mongodb?.connected
-                ? `MongoDB Atlas · ${dbStatus.checks.mongodb.dbName}`
-                : dbStatus.checks?.mongodb?.configured
-                  ? 'MongoDB (connecting...)'
-                  : 'SQLite (Prisma fallback)'}
+              {dbStatus.checks?.firebase?.connected
+                ? `Firebase Firestore · ${dbStatus.checks.firebase.projectId}`
+                : dbStatus.checks?.firebase?.configured
+                  ? 'Firebase (connecting...)'
+                  : 'Firebase not configured'}
             </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-green-500" />
-            <span className="text-muted-foreground">Uploads:</span>
-            <span className="font-medium">{dbStatus.checks?.uploads?.exists ? 'Ready' : 'Not configured'}</span>
+            {dbStatus.checks?.firebase?.error && (
+              <span className="text-xs text-red-400 ml-2">
+                {dbStatus.checks.firebase.error.slice(0, 60)}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2 ml-auto">
             <span className="text-xs text-muted-foreground">v{dbStatus.version}</span>

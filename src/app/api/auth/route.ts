@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import {
+  COLLECTIONS, findOne, create, findById,
+} from '@/lib/firestore-db'
 import { hashPassword, verifyPassword, createSession } from '@/lib/auth'
 
 export async function POST(req: NextRequest) {
@@ -10,21 +12,23 @@ export async function POST(req: NextRequest) {
       if (!email || !password) {
         return NextResponse.json({ error: 'Email and password required' }, { status: 400 })
       }
-      const existing = await db.user.findUnique({ where: { email } })
+      const existing = await findOne<any>(COLLECTIONS.USERS, [
+        { field: 'email', op: '==', value: email },
+      ])
       if (existing) {
         return NextResponse.json({ error: 'Email already registered' }, { status: 400 })
       }
-      const user = await db.user.create({
-        data: {
-          email,
-          passwordHash: hashPassword(password),
-          name: name || null,
-          phone: phone || null,
-          role: 'CUSTOMER',
-        },
+      const user = await create<any>(COLLECTIONS.USERS, {
+        email,
+        passwordHash: hashPassword(password),
+        name: name || null,
+        phone: phone || null,
+        role: 'CUSTOMER',
+        status: 'ACTIVE',
+        avatarUrl: null,
       })
-      await db.cart.create({ data: { userId: user.id } })
-      await db.wishlist.create({ data: { userId: user.id } })
+      await create(COLLECTIONS.CART, { userId: user.id, items: [] })
+      await create(COLLECTIONS.WISHLIST, { userId: user.id, items: [] })
       await createSession(user.id)
       return NextResponse.json({
         id: user.id, email: user.email, name: user.name,
@@ -36,7 +40,9 @@ export async function POST(req: NextRequest) {
       if (!email || !password) {
         return NextResponse.json({ error: 'Email and password required' }, { status: 400 })
       }
-      const user = await db.user.findUnique({ where: { email } })
+      const user = await findOne<any>(COLLECTIONS.USERS, [
+        { field: 'email', op: '==', value: email },
+      ])
       if (!user || !verifyPassword(password, user.passwordHash)) {
         return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
       }

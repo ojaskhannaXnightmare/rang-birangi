@@ -1,11 +1,11 @@
 /**
- * RANG BIRANGI - Auth Utilities
- * JWT-less simple cookie-based session for demo.
- * In production, replace with NextAuth + JWT.
+ * RANG BIRANGI - Auth Utilities (Firestore-backed)
  */
 import { cookies } from 'next/headers'
-import { db } from './db'
 import crypto from 'crypto'
+import {
+  COLLECTIONS, findById, findOne, create, update, remove,
+} from './firestore-db'
 
 export function hashPassword(password: string): string {
   return crypto.createHash('sha256').update(password + 'rangbirangi_salt').digest('hex')
@@ -24,18 +24,17 @@ export interface SessionUser {
 }
 
 const SESSION_COOKIE = 'rb_session'
-const SESSION_PREFIX = 'session:'
 
 export async function createSession(userId: string): Promise<void> {
   const token = crypto.randomBytes(32).toString('hex')
-  const expires = Date.now() + 7 * 24 * 60 * 60 * 1000 // 7 days
+  const expires = Date.now() + 7 * 24 * 60 * 60 * 1000
 
-  // Store session in Setting table (key-value)
-  await db.setting.upsert({
-    where: { key: `${SESSION_PREFIX}${token}` },
-    update: { value: JSON.stringify({ userId, expires }) },
-    create: { key: `${SESSION_PREFIX}${token}`, value: JSON.stringify({ userId, expires }) },
-  })
+  await create(COLLECTIONS.SESSIONS, {
+    token,
+    userId,
+    expires,
+    createdAt: new Date(),
+  }, `session_${token}`)
 
   const cookieStore = await cookies()
   cookieStore.set(SESSION_COOKIE, token, {
@@ -53,18 +52,15 @@ export async function getSession(): Promise<SessionUser | null> {
     const token = cookieStore.get(SESSION_COOKIE)?.value
     if (!token) return null
 
-    const sessionData = await db.setting.findUnique({
-      where: { key: `${SESSION_PREFIX}${token}` },
-    })
-    if (!sessionData) return null
+    const session = await findById<any>(COLLECTIONS.SESSIONS, `session_${token}`)
+    if (!session) return null
 
-    const { userId, expires } = JSON.parse(sessionData.value)
-    if (Date.now() > expires) {
-      await db.setting.delete({ where: { id: sessionData.id } })
+    if (Date.now() > session.expires) {
+      await remove(COLLECTIONS.SESSIONS, `session_${token}`)
       return null
     }
 
-    const user = await db.user.findUnique({ where: { id: userId } })
+    const user = await findById<any>(COLLECTIONS.USERS, session.userId)
     if (!user || user.status !== 'ACTIVE') return null
 
     return {
@@ -84,7 +80,7 @@ export async function destroySession(): Promise<void> {
   const token = cookieStore.get(SESSION_COOKIE)?.value
   if (token) {
     try {
-      await db.setting.delete({ where: { key: `${SESSION_PREFIX}${token}` } })
+      await remove(COLLECTIONS.SESSIONS, `session_${token}`)
     } catch {}
   }
   cookieStore.delete(SESSION_COOKIE)

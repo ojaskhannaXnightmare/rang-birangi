@@ -3,66 +3,41 @@
  * GET /api/health
  *
  * Returns the status of all platform services:
- *   - Database (MongoDB if configured, Prisma/SQLite fallback)
- *   - Authentication system
- *   - File upload system
+ *   - Firebase (Firestore + Storage)
+ *   - Upload system
  */
 import { NextResponse } from 'next/server'
-import { db } from '@/lib/db'
-import { checkMongoConnection, isMongoConfigured } from '@/lib/mongodb'
-import { existsSync } from 'fs'
-import path from 'path'
+import { checkFirebaseConnection, isFirebaseConfigured } from '@/lib/firebase-admin'
 
 export async function GET() {
   const checks: Record<string, any> = {}
   const timestamp = new Date().toISOString()
 
-  // MongoDB check
-  const mongoStatus = await checkMongoConnection()
-  checks.mongodb = {
-    configured: mongoStatus.configured,
-    connected: mongoStatus.connected,
-    dbName: mongoStatus.dbName,
-    error: mongoStatus.error,
-    uriPrefix: isMongoConfigured()
-      ? process.env.MONGODB_URI?.slice(0, 25) + '...'
-      : 'not set',
+  // Firebase check
+  const firebaseStatus = await checkFirebaseConnection()
+  checks.firebase = {
+    configured: firebaseStatus.configured,
+    connected: firebaseStatus.connected,
+    projectId: firebaseStatus.projectId,
+    error: firebaseStatus.error,
   }
-
-  // Prisma/SQLite fallback check
-  try {
-    await db.user.count()
-    checks.prisma = { status: 'ok', provider: 'sqlite' }
-  } catch (e: any) {
-    checks.prisma = { status: 'error', error: e.message }
-  }
-
-  // Upload directory check
-  const uploadDir = path.join(process.cwd(), 'public', 'uploads')
-  checks.uploads = {
-    dir: '/public/uploads',
-    exists: existsSync(uploadDir),
-    writable: true,
-  }
-
-  // Active database
-  checks.activeDatabase = mongoStatus.connected ? 'mongodb' : 'prisma-sqlite'
 
   // Environment
   checks.environment = {
     nodeEnv: process.env.NODE_ENV || 'development',
-    mongoUriSet: isMongoConfigured(),
-    jwtSecretSet: !!process.env.JWT_SECRET || !!process.env.NEXTAUTH_SECRET,
+    firebaseConfigured: isFirebaseConfigured(),
+    publicFirebaseSet: !!(process.env.NEXT_PUBLIC_FIREBASE_API_KEY && process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID),
   }
 
-  const allOk = checks.prisma.status === 'ok' && checks.uploads.exists
-  const status = allOk ? 'ok' : 'degraded'
+  const allOk = checks.firebase.connected
+  const status = allOk ? 'ok' : (isFirebaseConfigured() ? 'degraded' : 'not-configured')
 
   return NextResponse.json({
     status,
     service: 'RANG BIRANGI',
+    database: 'Firebase Firestore',
     timestamp,
-    version: '1.0.0',
+    version: '2.0.0',
     checks,
   })
 }

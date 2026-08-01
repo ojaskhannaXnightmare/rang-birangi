@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import {
+  COLLECTIONS, findMany, findOne, create, update,
+} from '@/lib/firestore-db'
 import { requireAdmin } from '@/lib/auth'
 
 export async function GET() {
   try {
     await requireAdmin()
-    const settings = await db.setting.findMany()
+    const settings = await findMany<any>(COLLECTIONS.SETTINGS)
     const obj: Record<string, string> = {}
     for (const s of settings) obj[s.key] = s.value
     return NextResponse.json({ settings: obj })
@@ -17,13 +19,16 @@ export async function GET() {
 export async function PATCH(req: NextRequest) {
   try {
     await requireAdmin()
-    const { settings } = await req.json() // { key: value, ... }
+    const { settings } = await req.json()
     for (const [key, value] of Object.entries(settings)) {
-      await db.setting.upsert({
-        where: { key },
-        update: { value: String(value) },
-        create: { key, value: String(value) },
-      })
+      const existing = await findOne<any>(COLLECTIONS.SETTINGS, [
+        { field: 'key', op: '==', value: key },
+      ])
+      if (existing) {
+        await update(COLLECTIONS.SETTINGS, existing.id, { value: String(value) })
+      } else {
+        await create(COLLECTIONS.SETTINGS, { key, value: String(value) })
+      }
     }
     return NextResponse.json({ success: true })
   } catch (e: any) {

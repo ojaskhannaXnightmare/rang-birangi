@@ -40,15 +40,20 @@ export function ProductDetailView({ slug }: { slug: string }) {
   const { toast } = useToast()
 
   useEffect(() => {
-    setLoading(true)
+    let cancelled = false
     fetch(`/api/products/${slug}`)
       .then((r) => r.json())
       .then((data) => {
+        if (cancelled) return
         setProduct(data)
         if (data.colors?.length > 0) setSelectedColor(data.colors[0])
         if (data.sizes?.length > 0) setSelectedSize(data.sizes[0])
         setLoading(false)
       })
+      .catch(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => { cancelled = true }
   }, [slug])
 
   useEffect(() => {

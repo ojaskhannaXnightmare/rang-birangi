@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import {
+  COLLECTIONS, findById, update, findOne, findMany, create,
+} from '@/lib/firestore-db'
 import { getSession } from '@/lib/auth'
+import { serializeDates } from '@/lib/helpers'
 
 export async function GET(
   _req: NextRequest,
@@ -11,22 +14,26 @@ export async function GET(
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { id } = await params
-    const order = await db.order.findUnique({
-      where: { id },
-      include: {
-        items: true,
-        payment: true,
-        shipment: true,
-        user: { select: { id: true, name: true, email: true, phone: true } },
-      },
-    })
+    const order = await findById<any>(COLLECTIONS.ORDERS, id)
     if (!order) return NextResponse.json({ error: 'Order not found' }, { status: 404 })
 
-    // Allow owner or admin
     if (order.userId !== session.id && session.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
-    return NextResponse.json({ order })
+
+    // Hydrate
+    order.items = await findMany<any>(COLLECTIONS.ORDER_ITEMS, [
+      { field: 'orderId', op: '==', value: order.id },
+    ])
+    order.payment = await findOne<any>(COLLECTIONS.PAYMENTS, [
+      { field: 'orderId', op: '==', value: order.id },
+    ])
+    order.shipment = await findOne<any>(COLLECTIONS.SHIPMENTS, [
+      { field: 'orderId', op: '==', value: order.id },
+    ])
+    order.user = await findById<any>(COLLECTIONS.USERS, order.userId)
+
+    return NextResponse.json({ order: serializeDates(order) })
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 })
   }
@@ -45,54 +52,53 @@ export async function PATCH(
     const body = await req.json()
     const { status, trackingNumber, courier, adminNote } = body
 
-    const update: any = {}
-    if (status) update.status = status
-    if (trackingNumber) update.trackingNumber = trackingNumber
-    if (courier) update.courier = courier
-    if (adminNote) update.notes = adminNote
+    const updateData: any = {}
+    if (status) updateData.status = status
+    if (trackingNumber) updateData.trackingNumber = trackingNumber
+    if (courier) updateData.courier = courier
+    if (adminNote) updateData.notes = adminNote
 
-    const order = await db.order.update({
-      where: { id },
-      data: update,
-    })
+    const order = await update<any>(COLLECTIONS.ORDERS, id, updateData)
 
-    // Update shipment if relevant
-    if (status === 'SHIPPED' || trackingNumber) {
-      await db.shipment.upsert({
-        where: { orderId: id },
-        update: {
-          ...(trackingNumber && { trackingNumber }),
-          ...(courier && { courier }),
-          ...(status === 'SHIPPED' && { status: 'PICKED_UP', shippedAt: new Date() }),
-        },
-        create: {
-          orderId: id,
-          courier: courier || 'Delhivery',
-          trackingNumber,
-          status: status === 'SHIPPED' ? 'PICKED_UP' : 'INITIATED',
-          shippedAt: status === 'SHIPPED' ? new Date() : null,
-        },
-      })
+    // Update shipment
+    const shipment = await findOne<any>(COLLECTIONS.SHIPMENTS, [
+      { field: 'orderId', op: '==', value: id },
+    ])
+    const shipUpdate: any = {}
+    if (trackingNumber) shipUpdate.trackingNumber = trackingNumber
+    if (courier) shipUpdate.courier = courier
+    if (status === 'SHIPPED') {
+      shipUpdate.status = 'PICKED_UP'
+      shipUpdate.shippedAt = new Date()
     }
     if (status === 'DELIVERED') {
-      await db.shipment.updateMany({
-        where: { orderId: id },
-        data: { status: 'DELIVERED', deliveredAt: new Date() },
+      shipUpdate.status = 'DELIVERED'
+      shipUpdate.deliveredAt = new Date()
+    }
+    if (shipment) {
+      await update(COLLECTIONS.SHIPMENTS, shipment.id, shipUpdate)
+    } else if (Object.keys(shipUpdate).length > 0) {
+      await create(COLLECTIONS.SHIPMENTS, {
+        orderId: id,
+        courier: courier || 'Delhivery',
+        trackingNumber: trackingNumber || null,
+        status: status === 'SHIPPED' ? 'PICKED_UP' : 'INITIATED',
+        shippedAt: status === 'SHIPPED' ? new Date() : null,
+        deliveredAt: status === 'DELIVERED' ? new Date() : null,
+        estimatedDelivery: new Date(Date.now() + 5 * 86400000),
       })
     }
 
     // Activity log
-    await db.activityLog.create({
-      data: {
-        userId: session.id,
-        action: 'ORDER_UPDATED',
-        entity: 'order',
-        entityId: id,
-        metadata: JSON.stringify({ status, trackingNumber }),
-      },
+    await create(COLLECTIONS.ACTIVITY_LOGS, {
+      userId: session.id,
+      action: 'ORDER_UPDATED',
+      entity: 'order',
+      entityId: id,
+      metadata: { status, trackingNumber },
     })
 
-    return NextResponse.json({ order })
+    return NextResponse.json({ order: serializeDates(order) })
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 })
   }

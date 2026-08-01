@@ -1,6 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import {
+  COLLECTIONS, findMany, findById, findOne,
+} from '@/lib/firestore-db'
 import { getSession } from '@/lib/auth'
+import { serializeDates } from '@/lib/helpers'
+
+async function hydrateOrder(order: any) {
+  const items = await findMany<any>(COLLECTIONS.ORDER_ITEMS, [
+    { field: 'orderId', op: '==', value: order.id },
+  ])
+  order.items = items
+
+  const payment = await findOne<any>(COLLECTIONS.PAYMENTS, [
+    { field: 'orderId', op: '==', value: order.id },
+  ])
+  order.payment = payment
+
+  const shipment = await findOne<any>(COLLECTIONS.SHIPMENTS, [
+    { field: 'orderId', op: '==', value: order.id },
+  ])
+  order.shipment = shipment
+
+  if (order.userId) {
+    order.user = await findById<any>(COLLECTIONS.USERS, order.userId)
+  }
+  return order
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -11,32 +36,22 @@ export async function GET(req: NextRequest) {
     const onlyMe = searchParams.get('mine') === '1'
 
     if (onlyMe) {
-      const orders = await db.order.findMany({
-        where: { userId: session.id },
-        include: {
-          items: true,
-          payment: true,
-          shipment: true,
-        },
-        orderBy: { createdAt: 'desc' },
+      const orders = await findMany<any>(COLLECTIONS.ORDERS, {
+        where: [{ field: 'userId', op: '==', value: session.id }],
+        orderBy: { field: 'createdAt', direction: 'desc' },
       })
-      return NextResponse.json({ orders })
+      for (const o of orders) await hydrateOrder(o)
+      return NextResponse.json({ orders: serializeDates(orders) })
     }
 
-    // Admin: all orders
     if (session.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
-    const orders = await db.order.findMany({
-      include: {
-        user: { select: { id: true, name: true, email: true, phone: true } },
-        items: true,
-        payment: true,
-        shipment: true,
-      },
-      orderBy: { createdAt: 'desc' },
+    const orders = await findMany<any>(COLLECTIONS.ORDERS, {
+      orderBy: { field: 'createdAt', direction: 'desc' },
     })
-    return NextResponse.json({ orders })
+    for (const o of orders) await hydrateOrder(o)
+    return NextResponse.json({ orders: serializeDates(orders) })
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 })
   }

@@ -1,16 +1,21 @@
 import { NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { COLLECTIONS, findMany, findById } from '@/lib/firestore-db'
 import { requireAdmin } from '@/lib/auth'
+import { serializeDates } from '@/lib/helpers'
 
 export async function GET() {
   try {
     await requireAdmin()
-    const logs = await db.activityLog.findMany({
-      take: 50,
-      include: { user: { select: { name: true, email: true } } },
-      orderBy: { createdAt: 'desc' },
+    const logs = await findMany<any>(COLLECTIONS.ACTIVITY_LOGS, {
+      orderBy: { field: 'createdAt', direction: 'desc' },
+      limit: 50,
     })
-    return NextResponse.json({ logs })
+    for (const log of logs) {
+      if (log.userId) {
+        log.user = await findById<any>(COLLECTIONS.USERS, log.userId)
+      }
+    }
+    return NextResponse.json({ logs: serializeDates(logs) })
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 })
   }

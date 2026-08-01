@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { COLLECTIONS, findMany } from '@/lib/firestore-db'
+import { serializeDates } from '@/lib/helpers'
 
 export async function GET() {
   try {
-    const banners = await db.banner.findMany({
-      where: { isActive: true },
-      orderBy: { sortOrder: 'asc' },
+    const banners = await findMany<any>(COLLECTIONS.BANNERS, {
+      where: [{ field: 'isActive', op: '==', value: true }],
+      orderBy: { field: 'sortOrder', direction: 'asc' },
     })
-    return NextResponse.json({ banners })
+    return NextResponse.json({ banners: serializeDates(banners) })
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 })
   }

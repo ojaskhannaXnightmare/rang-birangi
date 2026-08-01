@@ -115,9 +115,14 @@ export function AdminSettings() {
 
       <div className="p-4 rounded-xl bg-secondary/20 text-sm text-muted-foreground">
         <p className="font-medium text-foreground mb-1">⚠️ Production Notice</p>
-        In production, replace the demo authentication with NextAuth.js + JWT, integrate
-        real payment gateways (Razorpay/Paytm), Cloudinary for media uploads, and
-        Delhivery API for shipping. See .env.example for required configuration.
+        This app is configured for Firebase Firestore + Storage. To enable:
+        <ol className="list-decimal ml-5 mt-2 space-y-1">
+          <li>Go to Firebase Console → Project Settings → Service Accounts</li>
+          <li>Click "Generate new private key" and download the JSON</li>
+          <li>Set <code className="text-accent">FIREBASE_SERVICE_ACCOUNT</code> env var (full JSON) on Vercel</li>
+          <li>Or set <code className="text-accent">FIREBASE_PROJECT_ID</code>, <code className="text-accent">FIREBASE_CLIENT_EMAIL</code>, <code className="text-accent">FIREBASE_PRIVATE_KEY</code> separately</li>
+          <li>Enable Firestore Database and Storage in Firebase Console</li>
+        </ol>
       </div>
     </div>
   )

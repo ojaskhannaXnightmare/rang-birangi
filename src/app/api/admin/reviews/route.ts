@@ -1,18 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import {
+  COLLECTIONS, findMany, update, create, findById, findOne,
+} from '@/lib/firestore-db'
 import { requireAdmin } from '@/lib/auth'
+import { serializeDates } from '@/lib/helpers'
 
 export async function GET() {
   try {
     await requireAdmin()
-    const reviews = await db.review.findMany({
-      include: {
-        user: { select: { name: true, email: true, avatarUrl: true } },
-        product: { select: { id: true, name: true, slug: true, images: true } },
-      },
-      orderBy: { createdAt: 'desc' },
+    const reviews = await findMany<any>(COLLECTIONS.REVIEWS, {
+      orderBy: { field: 'createdAt', direction: 'desc' },
+      limit: 500,
     })
-    return NextResponse.json({ reviews })
+
+    // Hydrate users + products
+    const userIds = Array.from(new Set(reviews.map((r) => r.userId).filter(Boolean)))
+    const users = await Promise.all(userIds.map((id) => findById<any>(COLLECTIONS.USERS, id)))
+    const userMap = new Map(users.filter(Boolean).map((u) => [u!.id, u!]))
+
+    const productIds = Array.from(new Set(reviews.map((r) => r.productId).filter(Boolean)))
+    const products = await Promise.all(productIds.map((id) => findById<any>(COLLECTIONS.PRODUCTS, id)))
+    const productMap = new Map(products.filter(Boolean).map((p) => [p!.id, p!]))
+
+    reviews.forEach((r) => {
+      r.user = r.userId ? userMap.get(r.userId) : null
+      r.product = r.productId ? productMap.get(r.productId) : null
+    })
+
+    return NextResponse.json({ reviews: serializeDates(reviews) })
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 })
   }
@@ -23,44 +38,39 @@ export async function PATCH(req: NextRequest) {
     const session = await requireAdmin()
     const { id, status, adminReply } = await req.json()
 
-    const update: any = {}
-    if (status) update.status = status
-    if (adminReply !== undefined) update.adminReply = adminReply
+    const updateData: any = {}
+    if (status) updateData.status = status
+    if (adminReply !== undefined) updateData.adminReply = adminReply
 
-    const review = await db.review.update({
-      where: { id },
-      data: update,
-    })
+    const review = await update<any>(COLLECTIONS.REVIEWS, id, updateData)
 
     // Recalc product rating
     if (status) {
-      const allReviews = await db.review.findMany({
-        where: { productId: review.productId, status: 'APPROVED' },
-        select: { rating: true },
-      })
-      await db.product.update({
-        where: { id: review.productId },
-        data: {
-          rating: allReviews.length > 0
-            ? allReviews.reduce((s, r) => s + r.rating, 0) / allReviews.length
-            : 0,
-          reviewCount: allReviews.length,
-        },
+      const allReviews = await findMany<any>(COLLECTIONS.REVIEWS, [
+        { field: 'productId', op: '==', value: review.productId },
+        { field: 'status', op: '==', value: 'APPROVED' },
+      ])
+      await update(COLLECTIONS.PRODUCTS, review.productId, {
+        rating: allReviews.length > 0
+          ? allReviews.reduce((s, r) => s + r.rating, 0) / allReviews.length
+          : 0,
+        reviewCount: allReviews.length,
       })
     }
 
-    await db.activityLog.create({
-      data: {
-        userId: session.id,
-        action: 'REVIEW_UPDATED',
-        entity: 'review',
-        entityId: id,
-        metadata: JSON.stringify({ status, adminReply }),
-      },
+    await create(COLLECTIONS.ACTIVITY_LOGS, {
+      userId: session.id,
+      action: 'REVIEW_UPDATED',
+      entity: 'review',
+      entityId: id,
+      metadata: { status, adminReply },
     })
 
-    return NextResponse.json({ review })
+    return NextResponse.json({ review: serializeDates(review) })
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 })
   }
 }
+
+// Unused but kept for completeness
+export const _findOne = findOne

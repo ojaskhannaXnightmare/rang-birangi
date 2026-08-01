@@ -1,5 +1,6 @@
 /**
  * RANG BIRANGI - Helpers
+ * Firestore stores arrays natively, so products have images: string[] etc.
  */
 
 export interface ProductDTO {
@@ -16,6 +17,7 @@ export interface ProductDTO {
   compareAtPrice: number | null
   discountPercent: number
   stock: number
+  lowStockThreshold?: number
   images: string[]
   videos: string[]
   colors: string[]
@@ -30,38 +32,48 @@ export interface ProductDTO {
   isBestSeller: boolean
   isHandmade: boolean
   isPublished: boolean
+  seoTitle?: string | null
+  seoDescription?: string | null
+  createdAt?: Date
+  updatedAt?: Date
   category?: { id: string; name: string; slug: string }
 }
 
+/** Normalize any product doc (from Firestore) to ProductDTO */
 export function toProductDTO(p: any): ProductDTO {
   return {
     id: p.id,
     name: p.name,
     slug: p.slug,
     sku: p.sku,
-    description: p.description,
-    material: p.material,
-    weight: p.weight,
-    careInstructions: p.careInstructions,
+    description: p.description || '',
+    material: p.material ?? null,
+    weight: p.weight ?? null,
+    careInstructions: p.careInstructions ?? null,
     categoryId: p.categoryId,
-    price: p.price,
-    compareAtPrice: p.compareAtPrice,
-    discountPercent: p.discountPercent,
-    stock: p.stock,
-    images: p.images ? p.images.split(',').filter(Boolean) : [],
-    videos: p.videos ? p.videos.split(',').filter(Boolean) : [],
-    colors: p.colors ? p.colors.split(',').filter(Boolean) : [],
-    sizes: p.sizes ? p.sizes.split(',').filter(Boolean) : [],
-    tags: p.tags ? p.tags.split(',').filter(Boolean) : [],
-    rating: p.rating,
-    reviewCount: p.reviewCount,
-    isFeatured: p.isFeatured,
-    isTrending: p.isTrending,
-    isNewArrival: p.isNewArrival,
-    isFlashSale: p.isFlashSale,
-    isBestSeller: p.isBestSeller,
-    isHandmade: p.isHandmade,
-    isPublished: p.isPublished,
+    price: Number(p.price) || 0,
+    compareAtPrice: p.compareAtPrice ? Number(p.compareAtPrice) : null,
+    discountPercent: Number(p.discountPercent) || 0,
+    stock: Number(p.stock) || 0,
+    lowStockThreshold: Number(p.lowStockThreshold) || 5,
+    images: Array.isArray(p.images) ? p.images : [],
+    videos: Array.isArray(p.videos) ? p.videos : [],
+    colors: Array.isArray(p.colors) ? p.colors : [],
+    sizes: Array.isArray(p.sizes) ? p.sizes : [],
+    tags: Array.isArray(p.tags) ? p.tags : [],
+    rating: Number(p.rating) || 0,
+    reviewCount: Number(p.reviewCount) || 0,
+    isFeatured: !!p.isFeatured,
+    isTrending: !!p.isTrending,
+    isNewArrival: !!p.isNewArrival,
+    isFlashSale: !!p.isFlashSale,
+    isBestSeller: !!p.isBestSeller,
+    isHandmade: !!p.isHandmade,
+    isPublished: p.isPublished !== false,
+    seoTitle: p.seoTitle ?? null,
+    seoDescription: p.seoDescription ?? null,
+    createdAt: p.createdAt,
+    updatedAt: p.updatedAt,
     category: p.category
       ? { id: p.category.id, name: p.category.name, slug: p.category.slug }
       : undefined,
@@ -76,8 +88,13 @@ export function formatINR(amount: number): string {
   }).format(amount)
 }
 
-export function formatDate(date: Date | string): string {
-  const d = typeof date === 'string' ? new Date(date) : date
+export function formatDate(date: Date | string | { seconds: number; nanoseconds: number } | undefined): string {
+  if (!date) return ''
+  let d: Date
+  if (typeof date === 'string') d = new Date(date)
+  else if (date instanceof Date) d = date
+  else if (typeof date === 'object' && 'seconds' in date) d = new Date(date.seconds * 1000)
+  else d = new Date(date as any)
   return new Intl.DateTimeFormat('en-IN', {
     day: '2-digit',
     month: 'short',
@@ -87,8 +104,13 @@ export function formatDate(date: Date | string): string {
   }).format(d)
 }
 
-export function relativeTime(date: Date | string): string {
-  const d = typeof date === 'string' ? new Date(date) : date
+export function relativeTime(date: Date | string | { seconds: number; nanoseconds: number } | undefined): string {
+  if (!date) return 'just now'
+  let d: Date
+  if (typeof date === 'string') d = new Date(date)
+  else if (date instanceof Date) d = date
+  else if (typeof date === 'object' && 'seconds' in date) d = new Date(date.seconds * 1000)
+  else d = new Date(date as any)
   const diff = Date.now() - d.getTime()
   const sec = Math.floor(diff / 1000)
   const min = Math.floor(sec / 60)
@@ -124,4 +146,20 @@ export function paymentStatusColor(status: string): string {
     REFUNDED: 'bg-gray-500/20 text-gray-300 border-gray-500/40',
   }
   return map[status] || 'bg-gray-500/20 text-gray-300 border-gray-500/40'
+}
+
+/** Convert Date/Timestamp to ISO string for JSON serialization in API responses */
+export function serializeDates(obj: any): any {
+  if (obj === null || obj === undefined) return obj
+  if (obj instanceof Date) return obj.toISOString()
+  if (typeof obj === 'object' && 'seconds' in obj && 'nanoseconds' in obj) {
+    return new Date(obj.seconds * 1000).toISOString()
+  }
+  if (Array.isArray(obj)) return obj.map(serializeDates)
+  if (typeof obj === 'object') {
+    const result: any = {}
+    for (const [k, v] of Object.entries(obj)) result[k] = serializeDates(v)
+    return result
+  }
+  return obj
 }

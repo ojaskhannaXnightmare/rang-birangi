@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import {
+  COLLECTIONS, findMany, findOne, findById, create,
+} from '@/lib/firestore-db'
 import { requireAdmin } from '@/lib/auth'
-import { toProductDTO } from '@/lib/helpers'
+import { toProductDTO, serializeDates } from '@/lib/helpers'
 
 export async function GET(req: NextRequest) {
   try {
@@ -10,26 +12,38 @@ export async function GET(req: NextRequest) {
     const search = searchParams.get('search')
     const category = searchParams.get('category')
 
-    const where: any = {}
-    if (search) {
-      where.OR = [
-        { name: { contains: search } },
-        { sku: { contains: search } },
-      ]
-    }
+    let categoryDoc: any = null
+    const where: any[] = []
     if (category) {
-      const cat = await db.category.findUnique({ where: { slug: category } })
-      if (cat) where.categoryId = cat.id
+      categoryDoc = await findOne<any>(COLLECTIONS.CATEGORIES, [
+        { field: 'slug', op: '==', value: category },
+      ])
+      if (categoryDoc) where.push({ field: 'categoryId', op: '==', value: categoryDoc.id })
     }
 
-    const products = await db.product.findMany({
-      where,
-      include: { category: true },
-      orderBy: { createdAt: 'desc' },
+    let products = await findMany<any>(COLLECTIONS.PRODUCTS, {
+      where: where.length > 0 ? where : undefined,
+      orderBy: { field: 'createdAt', direction: 'desc' },
+      limit: 500,
     })
 
+    // In-memory search
+    if (search) {
+      const q = search.toLowerCase()
+      products = products.filter((p) =>
+        (p.name && p.name.toLowerCase().includes(q)) ||
+        (p.sku && p.sku.toLowerCase().includes(q))
+      )
+    }
+
+    // Hydrate categories
+    const catIds = Array.from(new Set(products.map((p) => p.categoryId).filter(Boolean)))
+    const cats = await Promise.all(catIds.map((id) => findById(COLLECTIONS.CATEGORIES, id)))
+    const catMap = new Map(cats.filter(Boolean).map((c) => [c!.id, c!]))
+    products.forEach((p) => { p.category = p.categoryId ? catMap.get(p.categoryId) : undefined })
+
     return NextResponse.json({
-      products: products.map(toProductDTO),
+      products: serializeDates(products.map(toProductDTO)),
     })
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 })
@@ -54,40 +68,43 @@ export async function POST(req: NextRequest) {
 
     const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
 
-    const product = await db.product.create({
-      data: {
-        name, slug, sku, description, material, weight, careInstructions,
-        categoryId, price: parseFloat(price),
-        compareAtPrice: compareAtPrice ? parseFloat(compareAtPrice) : null,
-        discountPercent: parseFloat(discountPercent || '0'),
-        stock: parseInt(stock || '0'),
-        images: Array.isArray(images) ? images.join(',') : images,
-        videos: Array.isArray(videos) ? videos.join(',') : videos || null,
-        colors: Array.isArray(colors) ? colors.join(',') : colors,
-        sizes: Array.isArray(sizes) ? sizes.join(',') : sizes,
-        tags: Array.isArray(tags) ? tags.join(',') : tags,
-        isFeatured: !!isFeatured,
-        isTrending: !!isTrending,
-        isNewArrival: !!isNewArrival,
-        isFlashSale: !!isFlashSale,
-        isBestSeller: !!isBestSeller,
-        isHandmade: !!isHandmade,
-        isPublished: isPublished !== undefined ? !!isPublished : true,
-        seoTitle, seoDescription,
-      },
+    const product = await create<any>(COLLECTIONS.PRODUCTS, {
+      name, slug, sku, description: description || '',
+      material: material || null, weight: weight || null,
+      careInstructions: careInstructions || null,
+      categoryId,
+      price: parseFloat(price),
+      compareAtPrice: compareAtPrice ? parseFloat(compareAtPrice) : null,
+      discountPercent: parseFloat(discountPercent || '0'),
+      stock: parseInt(stock || '0'),
+      lowStockThreshold: 5,
+      images: Array.isArray(images) ? images : [],
+      videos: Array.isArray(videos) ? videos : [],
+      colors: Array.isArray(colors) ? colors : [],
+      sizes: Array.isArray(sizes) ? sizes : [],
+      tags: Array.isArray(tags) ? tags : [],
+      rating: 0,
+      reviewCount: 0,
+      isFeatured: !!isFeatured,
+      isTrending: !!isTrending,
+      isNewArrival: !!isNewArrival,
+      isFlashSale: !!isFlashSale,
+      isBestSeller: !!isBestSeller,
+      isHandmade: !!isHandmade,
+      isPublished: isPublished !== undefined ? !!isPublished : true,
+      seoTitle: seoTitle || null,
+      seoDescription: seoDescription || null,
     })
 
-    await db.activityLog.create({
-      data: {
-        userId: session.id,
-        action: 'PRODUCT_CREATED',
-        entity: 'product',
-        entityId: product.id,
-        metadata: JSON.stringify({ name, sku }),
-      },
+    await create(COLLECTIONS.ACTIVITY_LOGS, {
+      userId: session.id,
+      action: 'PRODUCT_CREATED',
+      entity: 'product',
+      entityId: product.id,
+      metadata: { name, sku },
     })
 
-    return NextResponse.json({ product: toProductDTO(product) })
+    return NextResponse.json({ product: serializeDates(toProductDTO(product)) })
   } catch (e: any) {
     console.error('admin product create error', e)
     return NextResponse.json({ error: e.message }, { status: 500 })
