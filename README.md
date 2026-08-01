@@ -16,8 +16,11 @@ A production-ready, dark-luxury themed fashion e-commerce platform built with Ne
 
 ## 🔑 Login Credentials
 
-- **Admin:** `admin@rangbirangi.com` / `admin123`
+- **Admin:** `admin@rangbirangi.com` / `RB_1122`
 - **Customer:** `customer@demo.com` / `demo123`
+
+> 💡 **Admin Login**: Click the floating shield button in the bottom-right corner of the storefront.
+> **Customer Login**: Click the account (user) icon in the navbar.
 
 ## 🛠️ Setup Instructions
 

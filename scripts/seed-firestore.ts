@@ -19,7 +19,7 @@ import { COLLECTIONS, create, findOne } from '../src/lib/firestore-db'
 import crypto from 'crypto'
 
 const ADMIN_EMAIL = 'admin@rangbirangi.com'
-const ADMIN_PASSWORD = 'admin123'
+const ADMIN_PASSWORD = 'RB_1122'
 
 function hashPassword(s: string): string {
   return crypto.createHash('sha256').update(s + 'rangbirangi_salt').digest('hex')
