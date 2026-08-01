@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import {
   COLLECTIONS, findMany, findOne, create, update,
-} from '@/lib/firestore-db'
+} from '@/lib/supabase-db'
 import { requireAdmin } from '@/lib/auth'
 
 export async function GET() {

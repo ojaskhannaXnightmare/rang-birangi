@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import {
   COLLECTIONS, findMany, findOne, findById, create,
-} from '@/lib/firestore-db'
+} from '@/lib/supabase-db'
 import { requireAdmin } from '@/lib/auth'
 import { toProductDTO, serializeDates } from '@/lib/helpers'
 
@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
 
     // Hydrate categories
     const catIds = Array.from(new Set(products.map((p) => p.categoryId).filter(Boolean)))
-    const cats = await Promise.all(catIds.map((id) => findById(COLLECTIONS.CATEGORIES, id)))
+    const cats = await Promise.all(catIds.map((id) => findById<any>(COLLECTIONS.CATEGORIES, id)))
     const catMap = new Map(cats.filter(Boolean).map((c) => [c!.id, c!]))
     products.forEach((p) => { p.category = p.categoryId ? catMap.get(p.categoryId) : undefined })
 
@@ -68,9 +68,21 @@ export async function POST(req: NextRequest) {
 
     const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
 
+    // Check slug uniqueness
+    const existing = await findOne<any>(COLLECTIONS.PRODUCTS, [
+      { field: 'slug', op: '==', value: slug },
+    ])
+    if (existing) {
+      return NextResponse.json({ error: 'A product with this name already exists' }, { status: 400 })
+    }
+
     const product = await create<any>(COLLECTIONS.PRODUCTS, {
-      name, slug, sku, description: description || '',
-      material: material || null, weight: weight || null,
+      name,
+      slug,
+      sku,
+      description: description || '',
+      material: material || null,
+      weight: weight || null,
       careInstructions: careInstructions || null,
       categoryId,
       price: parseFloat(price),

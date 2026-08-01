@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { COLLECTIONS, findMany } from '@/lib/firestore-db'
+import { COLLECTIONS, findMany } from '@/lib/supabase-db'
 import { serializeDates } from '@/lib/helpers'
 
 export async function GET() {

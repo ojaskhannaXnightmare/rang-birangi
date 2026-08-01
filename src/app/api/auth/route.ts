@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import {
   COLLECTIONS, findOne, create,
-} from '@/lib/firestore-db'
+} from '@/lib/supabase-db'
 import { hashPassword, verifyPassword, createSession } from '@/lib/auth'
 
 const ADMIN_EMAIL = 'admin@rangbirangi.com'

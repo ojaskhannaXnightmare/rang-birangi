@@ -1,29 +1,20 @@
 /**
- * RANG BIRANGI - Image Upload API (Firebase Storage)
+ * RANG BIRANGI - Image Upload API (Supabase Storage)
  * POST /api/admin/upload
  *
- * Uploads product images to Firebase Storage.
+ * Uploads product images to Supabase Storage bucket 'rangbirangi'.
  * Processes with sharp (resize max 1200x1200, convert to webp).
- *
- * On Vercel/serverless: Firebase Storage is REQUIRED (no local filesystem).
- * In local dev: Falls back to /public/uploads/ if Firebase Storage fails.
  *
  * Returns: { url, filename, size, mimeType, storage }
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
-import { isFirebaseConfigured, getStorageBucket } from '@/lib/firebase-admin'
+import { isSupabaseConfigured, getSupabase, STORAGE_BUCKET } from '@/lib/supabase-admin'
 import sharp from 'sharp'
 import crypto from 'crypto'
-import { writeFile, mkdir } from 'fs/promises'
-import { existsSync } from 'fs'
-import path from 'path'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
-
-// Detect if we're on Vercel/serverless (read-only filesystem)
-const IS_VERCEL = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME
 
 export async function POST(req: NextRequest) {
   try {
@@ -60,76 +51,45 @@ export async function POST(req: NextRequest) {
     const filename = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}.webp`
     const storagePath = `rangbirangi/${filename}`
 
-    // PRIMARY: Try Firebase Storage
-    if (isFirebaseConfigured()) {
-      try {
-        const bucket = getStorageBucket()
-        const fileRef = bucket.file(storagePath)
-
-        await fileRef.save(processed, {
-          metadata: {
-            contentType: 'image/webp',
-            cacheControl: 'public, max-age=31536000, immutable',
-          },
-        })
-
-        // Make the file publicly readable
-        await fileRef.makePublic()
-
-        // Public URL
-        const url = `https://storage.googleapis.com/${bucket.name}/${storagePath}`
-
-        return NextResponse.json({
-          url,
-          filename,
-          originalName: file.name,
-          size: processed.length,
-          mimeType: 'image/webp',
-          storage: 'firebase',
-        })
-      } catch (e: any) {
-        console.error('Firebase Storage upload failed:', e.message)
-
-        // If we're on Vercel, we CANNOT fall back to local filesystem
-        if (IS_VERCEL) {
-          return NextResponse.json({
-            error: `Firebase Storage upload failed: ${e.message}. Make sure Firebase Storage is enabled and the service account has permission.`,
-          }, { status: 500 })
-        }
-        // In local dev, fall through to local fallback
-        console.log('Falling back to local filesystem (dev only)')
-      }
-    } else if (IS_VERCEL) {
-      // No Firebase configured + on Vercel = cannot upload
+    // Upload to Supabase Storage
+    if (!isSupabaseConfigured()) {
       return NextResponse.json({
-        error: 'Image upload requires Firebase Storage. Set FIREBASE_SERVICE_ACCOUNT env var on Vercel.',
+        error: 'Supabase not configured. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.',
       }, { status: 500 })
     }
 
-    // FALLBACK: local filesystem (dev only — won't work on Vercel)
-    try {
-      const uploadDir = path.join(process.cwd(), 'public', 'uploads')
-      if (!existsSync(uploadDir)) {
-        await mkdir(uploadDir, { recursive: true })
-      }
-      const filepath = path.join(uploadDir, filename)
-      await writeFile(filepath, processed)
-      const url = `/uploads/${filename}`
+    const supabase = getSupabase()
 
-      return NextResponse.json({
-        url,
-        filename,
-        originalName: file.name,
-        size: processed.length,
-        mimeType: 'image/webp',
-        storage: 'local',
+    const { error: uploadError } = await supabase
+      .storage
+      .from(STORAGE_BUCKET)
+      .upload(storagePath, processed, {
+        contentType: 'image/webp',
+        cacheControl: '3600',
+        upsert: false,
       })
-    } catch (localErr: any) {
-      console.error('Local upload also failed:', localErr.message)
+
+    if (uploadError) {
+      console.error('Supabase Storage upload failed:', uploadError.message)
       return NextResponse.json({
-        error: `Upload failed: ${localErr.message}`,
+        error: `Upload failed: ${uploadError.message}. Make sure the 'rangbirangi' storage bucket exists (run supabase-schema.sql).`,
       }, { status: 500 })
     }
+
+    // Get public URL
+    const { data: urlData } = supabase
+      .storage
+      .from(STORAGE_BUCKET)
+      .getPublicUrl(storagePath)
+
+    return NextResponse.json({
+      url: urlData.publicUrl,
+      filename,
+      originalName: file.name,
+      size: processed.length,
+      mimeType: 'image/webp',
+      storage: 'supabase',
+    })
   } catch (e: any) {
     console.error('upload error', e)
     return NextResponse.json({ error: e.message }, { status: 500 })
@@ -144,32 +104,25 @@ export async function DELETE(req: NextRequest) {
     if (!filename) {
       return NextResponse.json({ error: 'filename required' }, { status: 400 })
     }
-    const safe = path.basename(filename)
+    const safe = filename.split('/').pop() || filename
+    const storagePath = `rangbirangi/${safe}`
 
-    // Try Firebase Storage
-    if (isFirebaseConfigured()) {
-      try {
-        const bucket = getStorageBucket()
-        const storagePath = `rangbirangi/${safe}`
-        await bucket.file(storagePath).delete({ ignoreNotFound: true })
-        return NextResponse.json({ success: true, storage: 'firebase' })
-      } catch (e: any) {
-        if (IS_VERCEL) {
-          return NextResponse.json({ error: e.message }, { status: 500 })
-        }
-      }
+    if (!isSupabaseConfigured()) {
+      return NextResponse.json({ error: 'Supabase not configured' }, { status: 500 })
     }
 
-    // Fallback local (dev only)
-    if (!IS_VERCEL) {
-      const uploadDir = path.join(process.cwd(), 'public', 'uploads')
-      const filepath = path.join(uploadDir, safe)
-      if (existsSync(filepath)) {
-        const { unlink } = await import('fs/promises')
-        await unlink(filepath)
-      }
+    const supabase = getSupabase()
+    const { error } = await supabase
+      .storage
+      .from(STORAGE_BUCKET)
+      .remove([storagePath])
+
+    if (error) {
+      console.error('Delete error:', error.message)
+      return NextResponse.json({ error: error.message }, { status: 500 })
     }
-    return NextResponse.json({ success: true, storage: 'local' })
+
+    return NextResponse.json({ success: true, storage: 'supabase' })
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 })
   }

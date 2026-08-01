@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import {
   COLLECTIONS, findOne, findMany,
-} from '@/lib/firestore-db'
+} from '@/lib/supabase-db'
 import { toProductDTO, serializeDates } from '@/lib/helpers'
 
 export async function GET(

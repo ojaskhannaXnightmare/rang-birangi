@@ -39,7 +39,7 @@ export interface ProductDTO {
   category?: { id: string; name: string; slug: string }
 }
 
-/** Normalize any product doc (from Firestore) to ProductDTO */
+/** Normalize any product doc to ProductDTO */
 export function toProductDTO(p: any): ProductDTO {
   return {
     id: p.id,
@@ -52,7 +52,7 @@ export function toProductDTO(p: any): ProductDTO {
     careInstructions: p.careInstructions ?? null,
     categoryId: p.categoryId,
     price: Number(p.price) || 0,
-    compareAtPrice: p.compareAtPrice ? Number(p.compareAtPrice) : null,
+    compareAtPrice: p.compareAtPrice != null ? Number(p.compareAtPrice) : null,
     discountPercent: Number(p.discountPercent) || 0,
     stock: Number(p.stock) || 0,
     lowStockThreshold: Number(p.lowStockThreshold) || 5,

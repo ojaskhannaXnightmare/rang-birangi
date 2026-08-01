@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { COLLECTIONS, findMany, findById } from '@/lib/firestore-db'
+import { COLLECTIONS, findMany, findById } from '@/lib/supabase-db'
 import { requireAdmin } from '@/lib/auth'
 import { serializeDates } from '@/lib/helpers'
 

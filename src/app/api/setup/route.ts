@@ -13,7 +13,7 @@
  * This endpoint exists for explicit setup/verification.
  */
 import { NextRequest, NextResponse } from 'next/server'
-import { COLLECTIONS, findOne, create, update } from '@/lib/firestore-db'
+import { COLLECTIONS, findOne, create, update } from '@/lib/supabase-db'
 import crypto from 'crypto'
 
 function hashPassword(s: string): string {

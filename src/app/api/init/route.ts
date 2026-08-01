@@ -15,7 +15,7 @@
  * No auth required (only creates data if it doesn't exist).
  */
 import { NextResponse } from 'next/server'
-import { COLLECTIONS, findOne, findMany, create, update } from '@/lib/firestore-db'
+import { COLLECTIONS, findOne, findMany, create, update } from '@/lib/supabase-db'
 import crypto from 'crypto'
 
 function hashPassword(s: string): string {

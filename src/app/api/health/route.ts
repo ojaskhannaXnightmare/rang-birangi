@@ -3,41 +3,40 @@
  * GET /api/health
  *
  * Returns the status of all platform services:
- *   - Firebase (Firestore + Storage)
- *   - Upload system
+ *   - Supabase (PostgreSQL + Storage)
  */
 import { NextResponse } from 'next/server'
-import { checkFirebaseConnection, isFirebaseConfigured } from '@/lib/firebase-admin'
+import { checkSupabaseConnection, isSupabaseConfigured } from '@/lib/supabase-admin'
 
 export async function GET() {
   const checks: Record<string, any> = {}
   const timestamp = new Date().toISOString()
 
-  // Firebase check
-  const firebaseStatus = await checkFirebaseConnection()
-  checks.firebase = {
-    configured: firebaseStatus.configured,
-    connected: firebaseStatus.connected,
-    projectId: firebaseStatus.projectId,
-    error: firebaseStatus.error,
+  // Supabase check
+  const supabaseStatus = await checkSupabaseConnection()
+  checks.supabase = {
+    configured: supabaseStatus.configured,
+    connected: supabaseStatus.connected,
+    url: supabaseStatus.url,
+    error: supabaseStatus.error,
   }
 
   // Environment
   checks.environment = {
     nodeEnv: process.env.NODE_ENV || 'development',
-    firebaseConfigured: isFirebaseConfigured(),
-    publicFirebaseSet: !!(process.env.NEXT_PUBLIC_FIREBASE_API_KEY && process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID),
+    supabaseConfigured: isSupabaseConfigured(),
+    vercel: !!process.env.VERCEL,
   }
 
-  const allOk = checks.firebase.connected
-  const status = allOk ? 'ok' : (isFirebaseConfigured() ? 'degraded' : 'not-configured')
+  const allOk = checks.supabase.connected
+  const status = allOk ? 'ok' : (isSupabaseConfigured() ? 'degraded' : 'not-configured')
 
   return NextResponse.json({
     status,
     service: 'RANG BIRANGI',
-    database: 'Firebase Firestore',
+    database: 'Supabase PostgreSQL',
     timestamp,
-    version: '2.0.0',
+    version: '3.0.0',
     checks,
   })
 }

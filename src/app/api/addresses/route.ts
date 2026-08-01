@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import {
   COLLECTIONS, findMany, create, update, remove,
-} from '@/lib/firestore-db'
+} from '@/lib/supabase-db'
 import { getSession } from '@/lib/auth'
 import { serializeDates } from '@/lib/helpers'
 

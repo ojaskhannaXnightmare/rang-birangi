@@ -10,7 +10,7 @@
  * Creates the 4 default categories if they don't exist.
  */
 import { NextRequest, NextResponse } from 'next/server'
-import { COLLECTIONS, findMany, findOne, create, update, remove } from '@/lib/firestore-db'
+import { COLLECTIONS, findMany, findOne, create, update, remove } from '@/lib/supabase-db'
 import { requireAdmin } from '@/lib/auth'
 import { serializeDates } from '@/lib/helpers'
 

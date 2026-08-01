@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import {
   COLLECTIONS, update, remove, create,
-} from '@/lib/firestore-db'
+} from '@/lib/supabase-db'
 import { requireAdmin } from '@/lib/auth'
 import { toProductDTO, serializeDates } from '@/lib/helpers'
 
@@ -14,15 +14,14 @@ export async function PATCH(
     const { id } = await params
     const body = await req.json()
 
+    // Convert string numbers to actual numbers
     const updateData: any = { ...body }
-    // Type conversions
-    if (typeof body.price === 'string') updateData.price = parseFloat(body.price)
-    if (typeof body.compareAtPrice === 'string') updateData.compareAtPrice = body.compareAtPrice ? parseFloat(body.compareAtPrice) : null
-    if (typeof body.discountPercent === 'string') updateData.discountPercent = parseFloat(body.discountPercent)
-    if (typeof body.stock === 'string') updateData.stock = parseInt(body.stock)
-    // Arrays are stored natively in Firestore
+    if (typeof updateData.price === 'string') updateData.price = parseFloat(updateData.price)
+    if (typeof updateData.compareAtPrice === 'string') updateData.compareAtPrice = updateData.compareAtPrice ? parseFloat(updateData.compareAtPrice) : null
+    if (typeof updateData.discountPercent === 'string') updateData.discountPercent = parseFloat(updateData.discountPercent)
+    if (typeof updateData.stock === 'string') updateData.stock = parseInt(updateData.stock)
 
-    // Don't allow id/sku to be overwritten
+    // Don't allow id to be overwritten
     delete updateData.id
     delete updateData.sku
 

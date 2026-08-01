@@ -1,11 +1,11 @@
 /**
- * RANG BIRANGI - Auth Utilities (Firestore-backed)
+ * RANG BIRANGI - Auth Utilities (Supabase-backed)
  */
 import { cookies } from 'next/headers'
 import crypto from 'crypto'
 import {
   COLLECTIONS, findById, findOne, create, update, remove,
-} from './firestore-db'
+} from './supabase-db'
 
 export function hashPassword(password: string): string {
   return crypto.createHash('sha256').update(password + 'rangbirangi_salt').digest('hex')
@@ -31,9 +31,8 @@ export async function createSession(userId: string): Promise<void> {
 
   await create(COLLECTIONS.SESSIONS, {
     token,
-    userId,
+    user_id: userId,
     expires,
-    createdAt: new Date(),
   }, `session_${token}`)
 
   const cookieStore = await cookies()
@@ -60,7 +59,7 @@ export async function getSession(): Promise<SessionUser | null> {
       return null
     }
 
-    const user = await findById<any>(COLLECTIONS.USERS, session.userId)
+    const user = await findById<any>(COLLECTIONS.USERS, session.user_id || session.userId)
     if (!user || user.status !== 'ACTIVE') return null
 
     return {
