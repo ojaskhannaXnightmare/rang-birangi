@@ -76,3 +76,4 @@ coverage/
 # User pasted images (chat artifacts)
 upload/
 pasted_image_*.png
+tool-results/

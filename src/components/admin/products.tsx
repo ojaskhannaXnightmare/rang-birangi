@@ -50,7 +50,20 @@ export function AdminProducts() {
   }
 
   useEffect(() => {
-    fetch('/api/categories').then((r) => r.json()).then((d) => setCategories(d.categories || []))
+    // Load categories; if empty, auto-create defaults
+    fetch('/api/categories')
+      .then((r) => r.json())
+      .then(async (d) => {
+        let cats = d.categories || []
+        if (cats.length === 0) {
+          // Auto-create default categories
+          await fetch('/api/admin/categories?action=ensure-defaults', { method: 'GET' })
+          const res2 = await fetch('/api/categories')
+          const d2 = await res2.json()
+          cats = d2.categories || []
+        }
+        setCategories(cats)
+      })
   }, [])
 
   useEffect(() => {

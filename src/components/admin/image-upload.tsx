@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useRef, useCallback } from 'react'
-import { Upload, X, Loader2, Image as ImageIcon, Plus } from 'lucide-react'
+import { Upload, X, Loader2, Plus, Link2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -21,12 +22,20 @@ export function ImageUpload({
 }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false)
   const [dragOver, setDragOver] = useState(false)
+  const [urlInput, setUrlInput] = useState('')
   const fileInput = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
 
   const handleFiles = useCallback(async (files: FileList | File[]) => {
     const fileArray = Array.from(files).filter((f) => f.type.startsWith('image/'))
-    if (fileArray.length === 0) return
+    if (fileArray.length === 0) {
+      toast({
+        title: 'No images selected',
+        description: 'Please select image files (PNG, JPG, WEBP, GIF).',
+        variant: 'destructive',
+      })
+      return
+    }
 
     const remaining = maxImages - images.length
     if (remaining <= 0) {
@@ -48,19 +57,19 @@ export function ImageUpload({
         formData.append('file', file)
         const res = await fetch('/api/admin/upload', { method: 'POST', body: formData })
         const data = await res.json()
-        if (res.ok) {
+        if (res.ok && data.url) {
           uploaded.push(data.url)
         } else {
           toast({
             title: `Upload failed: ${file.name}`,
-            description: data.error,
+            description: data.error || 'Unknown error',
             variant: 'destructive',
           })
         }
       }
       if (uploaded.length > 0) {
         onChange([...images, ...uploaded])
-        toast({ title: `${uploaded.length} image(s) uploaded` })
+        toast({ title: `${uploaded.length} image(s) uploaded successfully` })
       }
     } catch (e: any) {
       toast({ title: 'Upload error', description: e.message, variant: 'destructive' })
@@ -72,15 +81,21 @@ export function ImageUpload({
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
+    e.stopPropagation()
     setDragOver(false)
     if (e.dataTransfer.files) handleFiles(e.dataTransfer.files)
   }, [handleFiles])
 
+  const openFilePicker = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    fileInput.current?.click()
+  }, [])
+
   const removeImage = async (idx: number) => {
     const url = images[idx]
     const filename = url.split('/').pop()
-    if (filename && url.startsWith('/uploads/')) {
-      // Delete from server
+    if (filename && url.includes('/uploads/')) {
       fetch(`/api/admin/upload?filename=${filename}`, { method: 'DELETE' }).catch(() => {})
     }
     onChange(images.filter((_, i) => i !== idx))
@@ -93,6 +108,16 @@ export function ImageUpload({
     const swapIdx = dir === 'left' ? idx - 1 : idx + 1
     ;[newImages[idx], newImages[swapIdx]] = [newImages[swapIdx], newImages[idx]]
     onChange(newImages)
+  }
+
+  const addUrl = () => {
+    if (!urlInput.trim()) return
+    if (images.length >= maxImages) {
+      toast({ title: 'Maximum reached', variant: 'destructive' })
+      return
+    }
+    onChange([...images, urlInput.trim()])
+    setUrlInput('')
   }
 
   return (
@@ -125,27 +150,31 @@ export function ImageUpload({
                     COVER
                   </div>
                 )}
-                {/* Hover overlay */}
-                <div className="absolute inset-0 bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                {/* Remove button - always visible on mobile, hover on desktop */}
+                <button
+                  type="button"
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); removeImage(i) }}
+                  className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-500/90 flex items-center justify-center text-white sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+                  title="Remove"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+                {/* Reorder buttons - visible on mobile */}
+                <div className="absolute bottom-1 inset-x-1 flex justify-between sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                   <button
-                    onClick={() => moveImage(i, 'left')}
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); moveImage(i, 'left') }}
                     disabled={i === 0}
-                    className="w-7 h-7 rounded-full glass-strong flex items-center justify-center disabled:opacity-30"
+                    className="w-6 h-6 rounded-full glass-strong flex items-center justify-center disabled:opacity-30 text-xs"
                     title="Move left"
                   >
                     ←
                   </button>
                   <button
-                    onClick={() => removeImage(i)}
-                    className="w-7 h-7 rounded-full bg-red-500/80 flex items-center justify-center text-white"
-                    title="Remove"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    onClick={() => moveImage(i, 'right')}
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); moveImage(i, 'right') }}
                     disabled={i === images.length - 1}
-                    className="w-7 h-7 rounded-full glass-strong flex items-center justify-center disabled:opacity-30"
+                    className="w-6 h-6 rounded-full glass-strong flex items-center justify-center disabled:opacity-30 text-xs"
                     title="Move right"
                   >
                     →
@@ -160,10 +189,10 @@ export function ImageUpload({
       {/* Drop zone / Upload button */}
       {images.length < maxImages && (
         <div
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-          onDragLeave={() => setDragOver(false)}
+          onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDragOver(true) }}
+          onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setDragOver(false) }}
           onDrop={handleDrop}
-          onClick={() => fileInput.current?.click()}
+          onClick={openFilePicker}
           className={`cursor-pointer border-2 border-dashed rounded-xl p-6 text-center transition-colors ${
             dragOver
               ? 'border-accent bg-accent/10'
@@ -176,7 +205,11 @@ export function ImageUpload({
             accept="image/jpeg,image/png,image/webp,image/gif"
             multiple
             className="hidden"
-            onChange={(e) => e.target.files && handleFiles(e.target.files)}
+            onChange={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              if (e.target.files) handleFiles(e.target.files)
+            }}
           />
           {uploading ? (
             <div className="flex flex-col items-center gap-2">
@@ -192,7 +225,7 @@ export function ImageUpload({
                 {images.length === 0 ? 'Upload product images' : 'Add more images'}
               </p>
               <p className="text-xs text-muted-foreground">
-                Drag & drop or click · PNG, JPG, WEBP · Max 10MB each
+                Tap to browse · PNG, JPG, WEBP · Max 10MB
               </p>
             </div>
           )}
@@ -200,42 +233,36 @@ export function ImageUpload({
       )}
 
       {/* Manual URL input (fallback) */}
-      <details className="mt-3">
-        <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
-          Or paste image URL manually
-        </summary>
-        <div className="flex gap-2 mt-2">
-          <input
-            type="url"
-            placeholder="https://example.com/image.jpg"
-            className="flex-1 px-3 py-2 rounded-lg bg-secondary/50 border border-border focus:border-accent outline-none text-sm"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                const val = (e.target as HTMLInputElement).value
-                if (val && images.length < maxImages) {
-                  onChange([...images, val])
-                  ;(e.target as HTMLInputElement).value = ''
+      <div className="mt-3">
+        <details>
+          <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
+            Or paste image URL manually
+          </summary>
+          <div className="flex gap-2 mt-2">
+            <Input
+              type="url"
+              value={urlInput}
+              onChange={(e) => setUrlInput(e.target.value)}
+              placeholder="https://example.com/image.jpg"
+              className="bg-secondary/50"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  addUrl()
                 }
-              }
-            }}
-          />
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={(e) => {
-              const input = (e.target as HTMLElement).parentElement?.querySelector('input')
-              if (input && input.value) {
-                onChange([...images, input.value])
-                input.value = ''
-              }
-            }}
-          >
-            <Plus className="h-3.5 w-3.5" />
-          </Button>
-        </div>
-      </details>
+              }}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={addUrl}
+            >
+              <Link2 className="h-3.5 w-3.5 mr-1" /> Add
+            </Button>
+          </div>
+        </details>
+      </div>
     </div>
   )
 }
