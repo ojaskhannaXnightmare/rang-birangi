@@ -55,6 +55,10 @@ export function StorefrontHome() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // Initialize database on first load (creates admin, categories, sections, banners, settings)
+    // Idempotent — safe to call every time
+    fetch('/api/init', { method: 'POST' }).catch(() => {})
+
     Promise.all([
       fetch('/api/homepage').then((r) => r.json()),
       fetch('/api/banners').then((r) => r.json()),

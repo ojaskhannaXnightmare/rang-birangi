@@ -2,17 +2,13 @@
  * RANG BIRANGI - Image Upload API (Firebase Storage)
  * POST /api/admin/upload
  *
- * - Accepts multipart/form-data with "file" field (image/png, image/jpeg, image/webp, image/gif)
- * - Processes with sharp (resize max 1200x1200, convert to webp)
- * - Uploads to Firebase Storage bucket at path: rangbirangi/{timestamp}-{random}.webp
- * - Returns { url, filename, size, mimeType }
+ * Uploads product images to Firebase Storage.
+ * Processes with sharp (resize max 1200x1200, convert to webp).
  *
- * Works on Vercel — no local filesystem dependency.
+ * On Vercel/serverless: Firebase Storage is REQUIRED (no local filesystem).
+ * In local dev: Falls back to /public/uploads/ if Firebase Storage fails.
  *
- * FALLBACK: If Firebase Storage fails (e.g., bucket not configured),
- * saves to /public/uploads/ locally. This fallback only works in dev
- * (won't persist on Vercel serverless). Always configure Firebase Storage
- * for production.
+ * Returns: { url, filename, size, mimeType, storage }
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
@@ -25,6 +21,9 @@ import path from 'path'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+
+// Detect if we're on Vercel/serverless (read-only filesystem)
+const IS_VERCEL = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME
 
 export async function POST(req: NextRequest) {
   try {
@@ -61,20 +60,25 @@ export async function POST(req: NextRequest) {
     const filename = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}.webp`
     const storagePath = `rangbirangi/${filename}`
 
-    // Try Firebase Storage first
+    // PRIMARY: Try Firebase Storage
     if (isFirebaseConfigured()) {
       try {
         const bucket = getStorageBucket()
         const fileRef = bucket.file(storagePath)
+
         await fileRef.save(processed, {
           metadata: {
             contentType: 'image/webp',
             cacheControl: 'public, max-age=31536000, immutable',
           },
-          public: true,
         })
+
+        // Make the file publicly readable
+        await fileRef.makePublic()
+
         // Public URL
         const url = `https://storage.googleapis.com/${bucket.name}/${storagePath}`
+
         return NextResponse.json({
           url,
           filename,
@@ -84,28 +88,48 @@ export async function POST(req: NextRequest) {
           storage: 'firebase',
         })
       } catch (e: any) {
-        console.error('Firebase Storage upload failed, falling back to local:', e.message)
-        // Fall through to local
+        console.error('Firebase Storage upload failed:', e.message)
+
+        // If we're on Vercel, we CANNOT fall back to local filesystem
+        if (IS_VERCEL) {
+          return NextResponse.json({
+            error: `Firebase Storage upload failed: ${e.message}. Make sure Firebase Storage is enabled and the service account has permission.`,
+          }, { status: 500 })
+        }
+        // In local dev, fall through to local fallback
+        console.log('Falling back to local filesystem (dev only)')
       }
+    } else if (IS_VERCEL) {
+      // No Firebase configured + on Vercel = cannot upload
+      return NextResponse.json({
+        error: 'Image upload requires Firebase Storage. Set FIREBASE_SERVICE_ACCOUNT env var on Vercel.',
+      }, { status: 500 })
     }
 
-    // Fallback: local filesystem (works in dev only)
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads')
-    if (!existsSync(uploadDir)) {
-      await mkdir(uploadDir, { recursive: true })
-    }
-    const filepath = path.join(uploadDir, filename)
-    await writeFile(filepath, processed)
-    const url = `/uploads/${filename}`
+    // FALLBACK: local filesystem (dev only — won't work on Vercel)
+    try {
+      const uploadDir = path.join(process.cwd(), 'public', 'uploads')
+      if (!existsSync(uploadDir)) {
+        await mkdir(uploadDir, { recursive: true })
+      }
+      const filepath = path.join(uploadDir, filename)
+      await writeFile(filepath, processed)
+      const url = `/uploads/${filename}`
 
-    return NextResponse.json({
-      url,
-      filename,
-      originalName: file.name,
-      size: processed.length,
-      mimeType: 'image/webp',
-      storage: 'local',
-    })
+      return NextResponse.json({
+        url,
+        filename,
+        originalName: file.name,
+        size: processed.length,
+        mimeType: 'image/webp',
+        storage: 'local',
+      })
+    } catch (localErr: any) {
+      console.error('Local upload also failed:', localErr.message)
+      return NextResponse.json({
+        error: `Upload failed: ${localErr.message}`,
+      }, { status: 500 })
+    }
   } catch (e: any) {
     console.error('upload error', e)
     return NextResponse.json({ error: e.message }, { status: 500 })
@@ -129,17 +153,21 @@ export async function DELETE(req: NextRequest) {
         const storagePath = `rangbirangi/${safe}`
         await bucket.file(storagePath).delete({ ignoreNotFound: true })
         return NextResponse.json({ success: true, storage: 'firebase' })
-      } catch {
-        // Fall through
+      } catch (e: any) {
+        if (IS_VERCEL) {
+          return NextResponse.json({ error: e.message }, { status: 500 })
+        }
       }
     }
 
-    // Fallback local
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads')
-    const filepath = path.join(uploadDir, safe)
-    if (existsSync(filepath)) {
-      const { unlink } = await import('fs/promises')
-      await unlink(filepath)
+    // Fallback local (dev only)
+    if (!IS_VERCEL) {
+      const uploadDir = path.join(process.cwd(), 'public', 'uploads')
+      const filepath = path.join(uploadDir, safe)
+      if (existsSync(filepath)) {
+        const { unlink } = await import('fs/promises')
+        await unlink(filepath)
+      }
     }
     return NextResponse.json({ success: true, storage: 'local' })
   } catch (e: any) {
