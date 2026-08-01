@@ -1,15 +1,16 @@
 /**
- * RANG BIRANGI - One-time Setup Endpoint
- * POST /api/setup
+ * RANG BIRANGI - Setup Endpoint
  *
- * Creates the admin user with credentials:
+ * GET /api/setup — Check if admin user exists (returns status, no side effects)
+ * POST /api/setup — Create or update admin user
+ *
+ * Admin credentials:
  *   Email: admin@rangbirangi.com
  *   Password: RB_1122
  *
- * This endpoint is idempotent — if admin already exists, it just updates the password.
- * Call this ONCE after deploying to seed the admin user.
- *
- * After setup, this endpoint can be safely deleted or left (it's harmless).
+ * NOTE: The auth route (/api/auth) will also auto-create the admin user
+ * on first login attempt, so calling this endpoint is OPTIONAL.
+ * This endpoint exists for explicit setup/verification.
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { COLLECTIONS, findOne, create, update } from '@/lib/firestore-db'
@@ -19,21 +20,40 @@ function hashPassword(s: string): string {
   return crypto.createHash('sha256').update(s + 'rangbirangi_salt').digest('hex')
 }
 
-export async function POST(req: NextRequest) {
-  try {
-    // Optional: require a setup secret to prevent random people from calling this
-    const body = await req.json().catch(() => ({}))
-    const setupSecret = body.secret || process.env.SETUP_SECRET
+const ADMIN_EMAIL = 'admin@rangbirangi.com'
+const ADMIN_PASSWORD = 'RB_1122'
 
-    // If SETUP_SECRET is set in env, require it
-    if (process.env.SETUP_SECRET && setupSecret !== process.env.SETUP_SECRET) {
-      return NextResponse.json({ error: 'Invalid setup secret' }, { status: 403 })
+export async function GET() {
+  try {
+    const existing = await findOne<any>(COLLECTIONS.USERS, [
+      { field: 'email', op: '==', value: ADMIN_EMAIL },
+    ])
+
+    if (existing) {
+      return NextResponse.json({
+        adminExists: true,
+        email: ADMIN_EMAIL,
+        role: existing.role,
+        message: 'Admin user already exists. Login with admin@rangbirangi.com / RB_1122',
+      })
     }
 
-    const ADMIN_EMAIL = 'admin@rangbirangi.com'
-    const ADMIN_PASSWORD = 'RB_1122'
+    return NextResponse.json({
+      adminExists: false,
+      email: ADMIN_EMAIL,
+      message: 'Admin user not found. POST to /api/setup to create, or just login and it will auto-create.',
+    })
+  } catch (e: any) {
+    return NextResponse.json({
+      adminExists: false,
+      error: e.message,
+      hint: 'Make sure FIREBASE_SERVICE_ACCOUNT env var is set.',
+    }, { status: 500 })
+  }
+}
 
-    // Check if admin already exists
+export async function POST(_req: NextRequest) {
+  try {
     const existing = await findOne<any>(COLLECTIONS.USERS, [
       { field: 'email', op: '==', value: ADMIN_EMAIL },
     ])
@@ -49,7 +69,7 @@ export async function POST(req: NextRequest) {
       })
       return NextResponse.json({
         success: true,
-        message: 'Admin user updated',
+        message: 'Admin user updated with new password',
         credentials: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
       })
     }
@@ -64,8 +84,6 @@ export async function POST(req: NextRequest) {
       status: 'ACTIVE',
       avatarUrl: null,
     })
-
-    // Also create cart + wishlist (just in case admin wants to test)
     await create(COLLECTIONS.CART, { userId: admin.id, items: [] })
     await create(COLLECTIONS.WISHLIST, { userId: admin.id, items: [] })
 
@@ -77,15 +95,9 @@ export async function POST(req: NextRequest) {
     })
   } catch (e: any) {
     console.error('setup error', e)
-    return NextResponse.json({ error: e.message }, { status: 500 })
+    return NextResponse.json({
+      error: e.message,
+      hint: 'Make sure FIREBASE_SERVICE_ACCOUNT env var is set on Vercel.',
+    }, { status: 500 })
   }
-}
-
-export async function GET() {
-  return NextResponse.json({
-    endpoint: '/api/setup',
-    method: 'POST',
-    description: 'Creates the admin user (admin@rangbirangi.com / RB_1122)',
-    usage: 'curl -X POST https://your-app.vercel.app/api/setup',
-  })
 }
