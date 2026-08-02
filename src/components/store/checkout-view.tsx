@@ -57,17 +57,24 @@ export function CheckoutView() {
     fetch()
   }, [fetch])
 
+  // Load saved addresses (non-blocking — if it fails, just show the form)
   useEffect(() => {
-    if (user) {
-      fetch('/api/addresses').then((r) => r.json()).then((d) => {
-        setAddresses(d.addresses || [])
-        const def = (d.addresses || []).find((a: Address) => a.isDefault)
-        if (def) {
-          setSelectedAddressId(def.id)
-          setShowAddressForm(false)
+    if (!user) return
+    fetch('/api/addresses')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d && d.addresses && d.addresses.length > 0) {
+          setAddresses(d.addresses)
+          const def = d.addresses.find((a: Address) => a.isDefault)
+          if (def) {
+            setSelectedAddressId(def.id || '')
+            setShowAddressForm(false)
+          }
         }
       })
-    }
+      .catch(() => {
+        // If addresses API fails, just show the form — no big deal
+      })
   }, [user])
 
   const activeItems = items.filter((i) => !i.savedForLater)
@@ -75,41 +82,44 @@ export function CheckoutView() {
   const shippingCost = subtotal >= 999 ? 0 : 49
   const total = subtotal + shippingCost
 
-  const selectedAddress = selectedAddressId
-    ? addresses.find((a) => a.id === selectedAddressId) || null
+  // The address that will be used for the order
+  // If user selected a saved address, use that. Otherwise use the form data.
+  const selectedAddress: Address | null = selectedAddressId
+    ? (addresses.find((a) => a.id === selectedAddressId) || null)
     : (showAddressForm && newAddress.fullName && newAddress.phone && newAddress.city
         ? newAddress
         : null)
 
-  const handleSaveAddress = async () => {
+  // ============ ADDRESS STEP ============
+  const validateAddressForm = (): boolean => {
     if (!newAddress.fullName || !newAddress.phone || !newAddress.houseNo ||
         !newAddress.street || !newAddress.city || !newAddress.state || !newAddress.pincode) {
       toast({ title: 'Please fill all required fields', variant: 'destructive' })
-      return
+      return false
     }
-    try {
-      const res = await fetch('/api/addresses', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newAddress),
-      })
-      const contentType = res.headers.get('content-type') || ''
-      if (!contentType.includes('application/json')) {
-        toast({ title: 'Server error', description: 'Please try again', variant: 'destructive' })
-        return
-      }
-      const data = await res.json()
-      if (res.ok) {
-        setAddresses((prev) => [data.address, ...prev])
-        setSelectedAddressId(data.address.id)
-        setShowAddressForm(false)
-        toast({ title: 'Address saved' })
-        setStep('payment')
-      } else {
-        toast({ title: 'Failed to save address', description: data.error, variant: 'destructive' })
-      }
-    } catch (e: any) {
-      toast({ title: 'Error', description: e.message, variant: 'destructive' })
+    if (newAddress.phone.length < 10) {
+      toast({ title: 'Phone number must be at least 10 digits', variant: 'destructive' })
+      return false
+    }
+    if (newAddress.pincode.length < 6) {
+      toast({ title: 'Pincode must be at least 6 digits', variant: 'destructive' })
+      return false
+    }
+    return true
+  }
+
+  // Continue to Payment — NO API CALLS, just validate and move to next step
+  const handleProceedToPayment = () => {
+    if (showAddressForm) {
+      // Validate the form
+      if (!validateAddressForm()) return
+      // Form is valid — move to payment step
+      // The address data is stored in `newAddress` state and will be used at order placement
+      setStep('payment')
+    } else if (selectedAddressId) {
+      setStep('payment')
+    } else {
+      toast({ title: 'Please select an address or fill the form', variant: 'destructive' })
     }
   }
 
@@ -123,24 +133,27 @@ export function CheckoutView() {
     setShowAddressForm(true)
   }
 
-  const handleProceedToPayment = async () => {
-    if (showAddressForm) {
-      await handleSaveAddress()
-    } else if (selectedAddressId) {
-      setStep('payment')
-    } else {
-      toast({ title: 'Please select an address', variant: 'destructive' })
+  // ============ PAYMENT STEP ============
+  const handleContinueToReview = () => {
+    if (paymentMethod === 'UPI') {
+      if (!paymentRef || paymentRef.trim().length < 6) {
+        toast({ title: 'Please enter the UTR/Transaction Reference number', variant: 'destructive' })
+        return
+      }
     }
+    setStep('review')
   }
 
+  // ============ REVIEW STEP ============ PLACE ORDER ============
   const handlePlaceOrder = async () => {
     if (!selectedAddress) {
       toast({ title: 'Please select an address', variant: 'destructive' })
       setStep('address')
       return
     }
-    if (paymentMethod === 'UPI' && !paymentRef && !upiId) {
+    if (paymentMethod === 'UPI' && !paymentRef) {
       toast({ title: 'Please enter UPI payment reference', variant: 'destructive' })
+      setStep('payment')
       return
     }
 
@@ -156,14 +169,25 @@ export function CheckoutView() {
           upiId: upiId || undefined,
         }),
       })
-      const data = await res.json()
-      if (res.ok) {
+
+      if (!res) {
+        throw new Error('No response from server')
+      }
+
+      let data: any
+      try {
+        data = await res.json()
+      } catch {
+        throw new Error('Server returned invalid response. Please try again.')
+      }
+
+      if (res.ok && data.orderId) {
         setView({ name: 'order-success', orderId: data.orderId })
       } else {
-        toast({ title: 'Checkout failed', description: data.error, variant: 'destructive' })
+        toast({ title: 'Checkout failed', description: data.error || 'Unknown error', variant: 'destructive' })
       }
     } catch (e: any) {
-      toast({ title: 'Error', description: e.message, variant: 'destructive' })
+      toast({ title: 'Error', description: e.message || 'Something went wrong', variant: 'destructive' })
     } finally {
       setProcessing(false)
     }
@@ -220,7 +244,7 @@ export function CheckoutView() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main */}
         <div className="lg:col-span-2 space-y-4">
-          {/* Address step */}
+          {/* ============ ADDRESS STEP ============ */}
           {step === 'address' && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -234,6 +258,7 @@ export function CheckoutView() {
                   {addresses.map((addr) => (
                     <button
                       key={addr.id}
+                      type="button"
                       onClick={() => handleSelectAddress(addr.id!)}
                       className={`w-full text-left p-4 rounded-xl border transition-all ${
                         selectedAddressId === addr.id
@@ -258,6 +283,7 @@ export function CheckoutView() {
                     </button>
                   ))}
                   <Button
+                    type="button"
                     variant="outline"
                     onClick={handleUseNewAddress}
                     className="w-full border-dashed"
@@ -366,21 +392,29 @@ export function CheckoutView() {
                       />
                     </div>
                   </div>
-                  <Button type="button" onClick={handleProceedToPayment} className="w-full mt-4 bg-luxe-gradient">
+                  <Button
+                    type="button"
+                    onClick={handleProceedToPayment}
+                    className="w-full mt-4 bg-luxe-gradient"
+                  >
                     Continue to Payment <ArrowRight className="h-4 w-4 ml-2" />
                   </Button>
                 </div>
               )}
 
               {!showAddressForm && selectedAddressId && (
-                <Button type="button" onClick={() => setStep('payment')} className="w-full bg-luxe-gradient">
+                <Button
+                  type="button"
+                  onClick={() => setStep('payment')}
+                  className="w-full bg-luxe-gradient"
+                >
                   Continue to Payment <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
               )}
             </motion.div>
           )}
 
-          {/* Payment step */}
+          {/* ============ PAYMENT STEP ============ */}
           {step === 'payment' && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -419,14 +453,10 @@ export function CheckoutView() {
                           <p className="text-xs text-muted-foreground mt-1">Amount: {formatINR(total)}</p>
                         </div>
 
-                        {/* UPI Deep Link Button — opens UPI app directly */}
+                        {/* UPI Deep Link Button */}
                         <a
                           href={`upi://pay?pa=9559974558@ptaxis&pn=RANG%20BIRANGI&am=${total}&cu=INR&tn=Order%20${Date.now()}`}
                           className="block w-full p-3 rounded-lg bg-gold-gradient text-background text-center font-medium hover:opacity-90 transition-opacity"
-                          onClick={(e) => {
-                            // Track that user clicked pay — they'll come back and enter UTR
-                            toast({ title: 'Opening UPI app...', description: 'After payment, enter the UTR number below' })
-                          }}
                         >
                           <Wallet className="h-4 w-4 inline mr-2" />
                           Pay {formatINR(total)} via UPI App
@@ -461,7 +491,6 @@ export function CheckoutView() {
                           />
                           <p className="text-xs text-muted-foreground mt-1">
                             ⚠️ Enter the UTR/reference number from your UPI app after payment.
-                            Order will be verified before shipping.
                           </p>
                         </div>
                       </motion.div>
@@ -486,17 +515,17 @@ export function CheckoutView() {
               </div>
 
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setStep('address')} className="flex-1">
+                <Button type="button" variant="outline" onClick={() => setStep('address')} className="flex-1">
                   <ArrowLeft className="h-4 w-4 mr-2" /> Back
                 </Button>
-                <Button onClick={() => setStep('review')} className="flex-1 bg-luxe-gradient">
+                <Button type="button" onClick={handleContinueToReview} className="flex-1 bg-luxe-gradient">
                   Review Order <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
               </div>
             </motion.div>
           )}
 
-          {/* Review step */}
+          {/* ============ REVIEW STEP ============ */}
           {step === 'review' && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -510,7 +539,7 @@ export function CheckoutView() {
                     <h3 className="font-display font-semibold flex items-center gap-2">
                       <MapPin className="h-4 w-4 text-accent" /> Shipping Address
                     </h3>
-                    <Button variant="ghost" size="sm" onClick={() => setStep('address')}>Edit</Button>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setStep('address')}>Edit</Button>
                   </div>
                   <p className="text-sm font-medium">{selectedAddress.fullName}</p>
                   <p className="text-xs text-muted-foreground mt-1">
@@ -528,7 +557,7 @@ export function CheckoutView() {
                   <h3 className="font-display font-semibold flex items-center gap-2">
                     <CreditCard className="h-4 w-4 text-accent" /> Payment Method
                   </h3>
-                  <Button variant="ghost" size="sm" onClick={() => setStep('payment')}>Edit</Button>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setStep('payment')}>Edit</Button>
                 </div>
                 <p className="text-sm">
                   {paymentMethod === 'UPI' ? (
@@ -563,10 +592,11 @@ export function CheckoutView() {
               </div>
 
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setStep('payment')} className="flex-1">
+                <Button type="button" variant="outline" onClick={() => setStep('payment')} className="flex-1">
                   <ArrowLeft className="h-4 w-4 mr-2" /> Back
                 </Button>
                 <Button
+                  type="button"
                   onClick={handlePlaceOrder}
                   disabled={processing}
                   className="flex-1 bg-gold-gradient text-background hover:opacity-90"
