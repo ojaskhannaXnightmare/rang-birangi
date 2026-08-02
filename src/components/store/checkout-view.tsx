@@ -407,6 +407,26 @@ export function CheckoutView() {
                           <p className="font-mono text-accent font-medium">9559974558@ptaxis</p>
                           <p className="text-xs text-muted-foreground mt-1">Amount: {formatINR(total)}</p>
                         </div>
+
+                        {/* UPI Deep Link Button — opens UPI app directly */}
+                        <a
+                          href={`upi://pay?pa=9559974558@ptaxis&pn=RANG%20BIRANGI&am=${total}&cu=INR&tn=Order%20${Date.now()}`}
+                          className="block w-full p-3 rounded-lg bg-gold-gradient text-background text-center font-medium hover:opacity-90 transition-opacity"
+                          onClick={(e) => {
+                            // Track that user clicked pay — they'll come back and enter UTR
+                            toast({ title: 'Opening UPI app...', description: 'After payment, enter the UTR number below' })
+                          }}
+                        >
+                          <Wallet className="h-4 w-4 inline mr-2" />
+                          Pay {formatINR(total)} via UPI App
+                        </a>
+
+                        <p className="text-xs text-center text-muted-foreground">
+                          ↑ Click above to open your UPI app (PhonePe, GPay, Paytm, BHIM)
+                        </p>
+
+                        <div className="h-px bg-border my-2" />
+
                         <div>
                           <Label className="text-xs text-muted-foreground mb-1 block">
                             Your UPI ID (optional)
@@ -429,7 +449,8 @@ export function CheckoutView() {
                             className="bg-secondary/50"
                           />
                           <p className="text-xs text-muted-foreground mt-1">
-                            ⚠️ Order will be verified server-side before confirmation.
+                            ⚠️ Enter the UTR/reference number from your UPI app after payment.
+                            Order will be verified before shipping.
                           </p>
                         </div>
                       </motion.div>

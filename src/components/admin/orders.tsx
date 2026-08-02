@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import {
-  Search, Eye, Truck, Package, CheckCircle2, XCircle, Loader2, Download,
+  Search, Eye, Truck, Package, CheckCircle2, XCircle, Loader2, Download, Check,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -244,6 +244,39 @@ export function AdminOrders() {
                   <span className="text-accent">{formatINR(selected.total)}</span>
                 </div>
               </div>
+
+              {/* Payment verification (for pending payments) */}
+              {selected.paymentStatus === 'PENDING' && selected.paymentMethod === 'UPI' && (
+                <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30 space-y-2">
+                  <h4 className="text-sm font-medium text-yellow-400">Payment Verification</h4>
+                  <p className="text-xs text-muted-foreground">
+                    UPI Payment — UTR: {selected.paymentRef || selected.payment?.txnRef || 'Not provided'}
+                  </p>
+                  <Button
+                    size="sm"
+                    onClick={async () => {
+                      setUpdating(true)
+                      const res = await fetch('/api/admin/verify-payment', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ orderId: selected.id }),
+                      })
+                      if (res.ok) {
+                        toast({ title: 'Payment verified!', description: 'Order confirmed.' })
+                        load()
+                        setSelected(null)
+                      } else {
+                        toast({ title: 'Verification failed', variant: 'destructive' })
+                      }
+                      setUpdating(false)
+                    }}
+                    disabled={updating}
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    <Check className="h-3.5 w-3.5 mr-1" /> Verify Payment
+                  </Button>
+                </div>
+              )}
 
               {/* Status update */}
               <div className="p-3 rounded-lg bg-secondary/30 space-y-2">
