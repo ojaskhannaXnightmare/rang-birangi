@@ -76,10 +76,10 @@ export function CheckoutView() {
   const total = subtotal + shippingCost
 
   const selectedAddress = selectedAddressId
-    ? addresses.find((a) => a.id === selectedAddressId)
-    : newAddress.fullName && newAddress.phone && newAddress.city
-      ? newAddress
-      : null
+    ? addresses.find((a) => a.id === selectedAddressId) || null
+    : (showAddressForm && newAddress.fullName && newAddress.phone && newAddress.city
+        ? newAddress
+        : null)
 
   const handleSaveAddress = async () => {
     if (!newAddress.fullName || !newAddress.phone || !newAddress.houseNo ||
@@ -87,18 +87,29 @@ export function CheckoutView() {
       toast({ title: 'Please fill all required fields', variant: 'destructive' })
       return
     }
-    const res = await fetch('/api/addresses', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newAddress),
-    })
-    if (res.ok) {
+    try {
+      const res = await fetch('/api/addresses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newAddress),
+      })
+      const contentType = res.headers.get('content-type') || ''
+      if (!contentType.includes('application/json')) {
+        toast({ title: 'Server error', description: 'Please try again', variant: 'destructive' })
+        return
+      }
       const data = await res.json()
-      setAddresses((prev) => [data.address, ...prev])
-      setSelectedAddressId(data.address.id)
-      setShowAddressForm(false)
-      toast({ title: 'Address saved' })
-      setStep('payment')
+      if (res.ok) {
+        setAddresses((prev) => [data.address, ...prev])
+        setSelectedAddressId(data.address.id)
+        setShowAddressForm(false)
+        toast({ title: 'Address saved' })
+        setStep('payment')
+      } else {
+        toast({ title: 'Failed to save address', description: data.error, variant: 'destructive' })
+      }
+    } catch (e: any) {
+      toast({ title: 'Error', description: e.message, variant: 'destructive' })
     }
   }
 
@@ -112,9 +123,9 @@ export function CheckoutView() {
     setShowAddressForm(true)
   }
 
-  const handleProceedToPayment = () => {
+  const handleProceedToPayment = async () => {
     if (showAddressForm) {
-      handleSaveAddress()
+      await handleSaveAddress()
     } else if (selectedAddressId) {
       setStep('payment')
     } else {
@@ -355,14 +366,14 @@ export function CheckoutView() {
                       />
                     </div>
                   </div>
-                  <Button onClick={handleProceedToPayment} className="w-full mt-4 bg-luxe-gradient">
+                  <Button type="button" onClick={handleProceedToPayment} className="w-full mt-4 bg-luxe-gradient">
                     Continue to Payment <ArrowRight className="h-4 w-4 ml-2" />
                   </Button>
                 </div>
               )}
 
               {!showAddressForm && selectedAddressId && (
-                <Button onClick={() => setStep('payment')} className="w-full bg-luxe-gradient">
+                <Button type="button" onClick={() => setStep('payment')} className="w-full bg-luxe-gradient">
                   Continue to Payment <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
               )}
