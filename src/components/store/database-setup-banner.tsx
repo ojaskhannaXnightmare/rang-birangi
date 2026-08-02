@@ -229,34 +229,52 @@ export function DatabaseSetupBanner() {
   const [status, setStatus] = useState<any>(null)
   const [dismissed, setDismissed] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [hasRefreshed, setHasRefreshed] = useState(false)
   const { toast } = useToast()
 
   useEffect(() => {
+    let interval: any = null
+    let isMounted = true
+
     // Check database status on load
-    fetch('/api/db-status')
-      .then((r) => r.json())
-      .then((d) => setStatus(d))
-      .catch(() => {})
+    const checkStatus = async () => {
+      try {
+        const r = await fetch('/api/db-status')
+        const d = await r.json()
+        if (!isMounted) return
+        setStatus(d)
 
-    // Check again every 30 seconds (in case user runs the SQL)
-    const interval = setInterval(() => {
-      fetch('/api/db-status')
-        .then((r) => r.json())
-        .then((d) => {
-          setStatus(d)
-          if (d.ready) {
-            clearInterval(interval)
-            toast({ title: 'Database ready!', description: 'All tables exist. Refreshing...' })
-            setTimeout(() => window.location.reload(), 2000)
-          }
-        })
-        .catch(() => {})
-    }, 30000)
+        // If database is NOT ready, start polling (only when banner is visible)
+        if (!d.ready && !interval) {
+          interval = setInterval(async () => {
+            try {
+              const r2 = await fetch('/api/db-status')
+              const d2 = await r2.json()
+              if (!isMounted) return
+              setStatus(d2)
+              // When database becomes ready, refresh ONCE and stop polling
+              if (d2.ready && !hasRefreshed) {
+                clearInterval(interval)
+                interval = null
+                setHasRefreshed(true)
+                toast({ title: 'Database ready!', description: 'All tables exist. Refreshing...' })
+                setTimeout(() => window.location.reload(), 2000)
+              }
+            } catch {}
+          }, 30000)
+        }
+      } catch {}
+    }
 
-    return () => clearInterval(interval)
-  }, [toast])
+    checkStatus()
 
-  // Don't show if database is ready or dismissed or status not loaded
+    return () => {
+      isMounted = false
+      if (interval) clearInterval(interval)
+    }
+  }, [toast, hasRefreshed])
+
+  // Don't show if database is ready, dismissed, or status not loaded yet
   if (!status || status.ready || dismissed) return null
 
   const copySQL = () => {
