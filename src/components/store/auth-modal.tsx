@@ -82,9 +82,11 @@ export function AuthModal() {
                   <X className="h-4 w-4" />
                 </button>
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="w-10 h-10 rounded-full bg-gold-gradient flex items-center justify-center">
-                    <span className="text-background font-display text-lg font-bold">R</span>
-                  </div>
+                  <img
+                    src="/logo.png"
+                    alt="RANG BIRANGI"
+                    className="w-10 h-10 rounded-full object-cover border border-gold/30"
+                  />
                   <span className="text-lg font-display font-bold tracking-wider text-gradient-gold">
                     RANG BIRANGI
                   </span>

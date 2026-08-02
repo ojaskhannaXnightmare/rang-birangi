@@ -220,8 +220,6 @@ INSERT INTO settings (key, value) VALUES
 ('cod_available', 'true'),
 ('currency', 'INR'),
 ('currency_symbol', '₹'),
-('instagram_url', 'https://instagram.com/rangbirangi'),
-('facebook_url', 'https://facebook.com/rangbirangi'),
 ('whatsapp_url', 'https://wa.me/919559974558')
 ON CONFLICT (key) DO NOTHING;
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { Instagram, Facebook, Mail, Phone, MapPin } from 'lucide-react'
+import { Mail, Phone, MapPin } from 'lucide-react'
 import { useUIStore } from '@/stores/ui-store'
 
 export function Footer() {
@@ -13,9 +13,11 @@ export function Footer() {
           {/* Brand */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-full bg-luxe-gradient flex items-center justify-center border border-gold/30">
-                <span className="text-accent font-display text-lg font-bold">R</span>
-              </div>
+              <img
+                src="/logo.png"
+                alt="RANG BIRANGI"
+                className="w-12 h-12 rounded-full object-cover border border-gold/30"
+              />
               <div className="flex flex-col leading-none">
                 <span className="text-lg font-display font-bold tracking-wider text-gradient-gold">
                   RANG BIRANGI
@@ -30,14 +32,6 @@ export function Footer() {
               earrings, sarees, and kurtis — made by skilled artisans across India.
             </p>
             <div className="flex gap-3">
-              <a href="https://instagram.com/rangbirangi" target="_blank" rel="noreferrer"
-                className="w-9 h-9 rounded-full glass flex items-center justify-center hover:bg-accent/20 transition-colors">
-                <Instagram className="h-4 w-4" />
-              </a>
-              <a href="https://facebook.com/rangbirangi" target="_blank" rel="noreferrer"
-                className="w-9 h-9 rounded-full glass flex items-center justify-center hover:bg-accent/20 transition-colors">
-                <Facebook className="h-4 w-4" />
-              </a>
               <a href="https://wa.me/919559974558" target="_blank" rel="noreferrer"
                 className="w-9 h-9 rounded-full glass flex items-center justify-center hover:bg-accent/20 transition-colors">
                 <Mail className="h-4 w-4" />

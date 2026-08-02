@@ -195,9 +195,11 @@ function SidebarContent({
       {/* Header */}
       <div className="p-5 border-b border-sidebar-border flex items-center justify-between">
         <button onClick={onHome} className="flex items-center gap-2 group">
-          <div className="w-10 h-10 rounded-full bg-luxe-gradient flex items-center justify-center border border-gold/30 flex-shrink-0">
-            <span className="text-accent font-display text-lg font-bold">R</span>
-          </div>
+          <img
+            src="/logo.png"
+            alt="RANG BIRANGI"
+            className="w-10 h-10 rounded-full object-cover border border-gold/30 flex-shrink-0"
+          />
           <div className="flex flex-col leading-none">
             <span className="text-sm font-display font-bold tracking-wider text-gradient-gold">
               RANG BIRANGI

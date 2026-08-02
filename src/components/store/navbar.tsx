@@ -125,9 +125,11 @@ export function Navbar() {
               className="flex items-center gap-2 group"
             >
               <div className="relative">
-                <div className="w-10 h-10 rounded-full bg-luxe-gradient flex items-center justify-center border border-gold/30 group-hover:border-gold/60 transition-colors">
-                  <span className="text-accent font-display text-lg font-bold">R</span>
-                </div>
+                <img
+                  src="/logo.png"
+                  alt="RANG BIRANGI"
+                  className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover border border-gold/30 group-hover:border-gold/60 transition-colors"
+                />
                 <div className="absolute -inset-0.5 rounded-full bg-gradient-to-br from-accent/20 to-primary/20 blur-sm opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
               <div className="hidden sm:flex flex-col leading-none">

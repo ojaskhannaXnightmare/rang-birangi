@@ -19,7 +19,8 @@ export const metadata: Metadata = {
   keywords: ["RANG BIRANGI", "handmade bangles", "earrings", "sarees", "kurtis", "Indian fashion", "handcrafted jewelry", "ethnic wear"],
   authors: [{ name: "RANG BIRANGI" }],
   icons: {
-    icon: "/logo.svg",
+    icon: "/logo.png",
+    apple: "/logo.png",
   },
   openGraph: {
     title: "RANG BIRANGI — Handcrafted Indian Elegance",

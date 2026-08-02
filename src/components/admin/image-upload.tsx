@@ -124,13 +124,25 @@ export function ImageUpload({
   }
 
   const addUrl = () => {
-    if (!urlInput.trim()) return
+    const url = urlInput.trim()
+    if (!url) {
+      toast({ title: 'Please enter a URL', variant: 'destructive' })
+      return
+    }
     if (images.length >= maxImages) {
       toast({ title: 'Maximum reached', variant: 'destructive' })
       return
     }
-    onChange([...images, urlInput.trim()])
+    // Basic URL validation
+    try {
+      new URL(url)
+    } catch {
+      toast({ title: 'Invalid URL', description: 'Please enter a valid image URL', variant: 'destructive' })
+      return
+    }
+    onChange([...images, url])
     setUrlInput('')
+    toast({ title: 'Image URL added' })
   }
 
   return (
