@@ -73,7 +73,7 @@ coverage/
 *.swo
 *~
 
-# User pasted images (chat artifacts)
-upload/
+# User pasted images (chat artifacts) — only at root level, NOT src/app/api/admin/upload/
+/upload/
 pasted_image_*.png
 tool-results/
