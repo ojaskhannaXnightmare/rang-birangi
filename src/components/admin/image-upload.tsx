@@ -56,6 +56,19 @@ export function ImageUpload({
         const formData = new FormData()
         formData.append('file', file)
         const res = await fetch('/api/admin/upload', { method: 'POST', body: formData })
+
+        // Handle non-JSON responses (e.g., 404 HTML page)
+        const contentType = res.headers.get('content-type') || ''
+        if (!contentType.includes('application/json')) {
+          const text = await res.text()
+          toast({
+            title: `Upload failed: ${file.name}`,
+            description: `Server returned ${res.status}. The upload API may not be deployed. ${text.slice(0, 100)}`,
+            variant: 'destructive',
+          })
+          continue
+        }
+
         const data = await res.json()
         if (res.ok && data.url) {
           uploaded.push(data.url)

@@ -166,9 +166,17 @@ CREATE TABLE IF NOT EXISTS sessions (
 -- Storage bucket
 INSERT INTO storage.buckets (id, name, public) VALUES ('rangbirangi', 'rangbirangi', true) ON CONFLICT (id) DO NOTHING;
 
+-- Storage policies: allow public read, service role write
+DROP POLICY IF EXISTS "Public read rangbirangi" ON storage.objects;
+CREATE POLICY "Public read rangbirangi" ON storage.objects FOR SELECT USING (bucket_id = 'rangbirangi');
+DROP POLICY IF EXISTS "Service role write rangbirangi" ON storage.objects;
+CREATE POLICY "Service role write rangbirangi" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'rangbirangi');
+DROP POLICY IF EXISTS "Service role delete rangbirangi" ON storage.objects;
+CREATE POLICY "Service role delete rangbirangi" ON storage.objects FOR DELETE USING (bucket_id = 'rangbirangi');
+
 -- Seed admin user (admin@rangbirangi.com / RB_1122)
 INSERT INTO users (email, name, password_hash, role, phone, status)
-VALUES ('admin@rangbirangi.com', 'RANG BIRANGI Admin', 'f5d3e5b7c4a9f0e1d2c3b4a5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5', 'ADMIN', '9559974558', 'ACTIVE')
+VALUES ('admin@rangbirangi.com', 'RANG BIRANGI Admin', '26e0dfadec08a1a0893c620d8cdcffff1102f4e48de6cee1fb99e28e0909e75c', 'ADMIN', '9559974558', 'ACTIVE')
 ON CONFLICT (email) DO NOTHING;
 
 -- Seed categories
