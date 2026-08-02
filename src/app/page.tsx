@@ -17,6 +17,7 @@ import { OrderSuccessView } from '@/components/store/order-success-view'
 import { AuthModal } from '@/components/store/auth-modal'
 import { CustomerDashboard } from '@/components/store/customer-dashboard'
 import { FloatingAdminButton } from '@/components/store/floating-admin-button'
+import { DatabaseSetupBanner } from '@/components/store/database-setup-banner'
 import { AdminPanel } from '@/components/admin/admin-panel'
 
 export default function Home() {
@@ -44,6 +45,7 @@ export default function Home() {
   if (view.name === 'admin') {
     return (
       <>
+        <DatabaseSetupBanner />
         <AdminPanel tab={view.tab} />
         <AuthModal />
         <FloatingAdminButton />
@@ -53,6 +55,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col">
+      <DatabaseSetupBanner />
       <Navbar />
 
       <main className="flex-1">
