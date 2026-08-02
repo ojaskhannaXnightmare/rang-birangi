@@ -55,9 +55,9 @@ export function StorefrontHome() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Initialize database on first load (creates admin, categories, sections, banners, settings)
-    // Idempotent — safe to call every time
-    fetch('/api/init', { method: 'POST' }).catch(() => {})
+    // Auto-setup database on first load (creates all tables + seeds data)
+    // This is idempotent — safe to call every time
+    fetch('/api/setup-db', { method: 'POST' }).catch(() => {})
 
     Promise.all([
       fetch('/api/homepage').then((r) => r.json()),
@@ -70,6 +70,22 @@ export function StorefrontHome() {
       setCategories(cat.categories || [])
       setReviews(rev.reviews || [])
       setLoading(false)
+    }).catch(() => {
+      // Retry after a delay (database might still be setting up)
+      setTimeout(() => {
+        Promise.all([
+          fetch('/api/homepage').then((r) => r.json()),
+          fetch('/api/banners').then((r) => r.json()),
+          fetch('/api/categories').then((r) => r.json()),
+          fetch('/api/reviews?limit=6').then((r) => r.json()),
+        ]).then(([hp, bn, cat, rev]) => {
+          setSections(hp.sections || [])
+          setBanners(bn.banners || [])
+          setCategories(cat.categories || [])
+          setReviews(rev.reviews || [])
+          setLoading(false)
+        }).catch(() => setLoading(false))
+      }, 3000)
     })
   }, [])
 
