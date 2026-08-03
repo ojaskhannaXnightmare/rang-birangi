@@ -56,9 +56,10 @@ export function Navbar() {
       {/* Announcement bar */}
       <div className="bg-gold-gradient text-black text-xs sm:text-sm font-medium py-2 text-center px-4">
         <span className="inline-flex items-center gap-2">
-          <Sparkles className="h-3.5 w-3.5" />
-          Free shipping on orders above ₹999 · COD available across India
-          <Sparkles className="h-3.5 w-3.5" />
+          <Sparkles className="h-3.5 w-3.5 flex-shrink-0" />
+          <span className="hidden sm:inline">Free shipping on orders above ₹999 · COD available across India</span>
+          <span className="sm:hidden">Free shipping above ₹999</span>
+          <Sparkles className="h-3.5 w-3.5 flex-shrink-0" />
         </span>
       </div>
 

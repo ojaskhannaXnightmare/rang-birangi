@@ -35,8 +35,21 @@ export function AuthModal() {
           phone: form.phone,
         }),
       })
-      const data = await res.json()
-      if (res.ok) {
+
+      if (!res) {
+        toast({ title: 'No response from server', variant: 'destructive' })
+        return
+      }
+
+      let data: any
+      try {
+        data = await res.json()
+      } catch {
+        toast({ title: 'Server error', description: 'Please try again', variant: 'destructive' })
+        return
+      }
+
+      if (res.ok && data.id) {
         setUser(data)
         await fetchUser()
         toast({
@@ -45,8 +58,10 @@ export function AuthModal() {
         })
         closeAuth()
         setForm({ email: '', password: '', name: '', phone: '' })
+        // Redirect to shop after successful login/signup
+        useUIStore.getState().setView({ name: 'shop' })
       } else {
-        toast({ title: 'Authentication failed', description: data.error, variant: 'destructive' })
+        toast({ title: 'Authentication failed', description: data.error || 'Unknown error', variant: 'destructive' })
       }
     } catch (e: any) {
       toast({ title: 'Error', description: e.message, variant: 'destructive' })

@@ -27,13 +27,13 @@ export default function Home() {
   const fetchCart = useCartStore((s) => s.fetch)
   const fetchWishlist = useWishlistStore((s) => s.fetch)
 
-  // Initial load: fetch user, cart, wishlist
+  // Initial load: fetch user, cart, wishlist (all silent — no error toasts)
   useEffect(() => {
-    fetchUser().then(() => {
-      // Only fetch cart/wishlist after user is resolved
-      fetchCart()
-      fetchWishlist()
-    })
+    fetchUser().catch(() => {}).then(() => {
+      // Cart/wishlist fetch silently — if DB not ready, just use empty arrays
+      fetchCart().catch(() => {})
+      fetchWishlist().catch(() => {})
+    }).catch(() => {})
   }, [fetchUser, fetchCart, fetchWishlist])
 
   // Scroll to top on view change

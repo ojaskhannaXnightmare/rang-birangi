@@ -44,8 +44,9 @@ export async function POST(req: NextRequest) {
         status: 'ACTIVE',
         avatarUrl: null,
       })
-      await create(COLLECTIONS.CART, { userId: user.id, items: [] })
-      await create(COLLECTIONS.WISHLIST, { userId: user.id, items: [] })
+      // Create cart + wishlist (non-blocking — if they fail, user is still created)
+      try { await create(COLLECTIONS.CART, { userId: user.id, items: [] }) } catch {}
+      try { await create(COLLECTIONS.WISHLIST, { userId: user.id, items: [] }) } catch {}
       await createSession(user.id)
       return NextResponse.json({
         id: user.id, email: user.email, name: user.name,

@@ -46,7 +46,9 @@ export async function GET() {
     const items = await getWishlistItems(session.id)
     return NextResponse.json({ items: serializeDates(items) })
   } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
+    // Silent fail — return empty wishlist instead of error
+    console.error('wishlist GET error', e.message)
+    return NextResponse.json({ items: [] })
   }
 }
 

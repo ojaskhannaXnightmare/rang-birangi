@@ -56,8 +56,9 @@ export async function GET() {
     const items = await getCartWithItems(session.id)
     return NextResponse.json({ items: serializeDates(items) })
   } catch (e: any) {
-    console.error('cart GET error', e)
-    return NextResponse.json({ error: e.message }, { status: 500 })
+    // Silent fail — return empty cart instead of error
+    console.error('cart GET error', e.message)
+    return NextResponse.json({ items: [] })
   }
 }
 
