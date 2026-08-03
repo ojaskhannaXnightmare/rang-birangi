@@ -18,7 +18,13 @@ export function CartDrawer() {
   const closeCart = useUIStore((s) => s.closeCart)
   const setView = useUIStore((s) => s.setView)
   const openAuth = useUIStore((s) => s.openAuth)
-  const { items, fetch, updateQty, remove, saveForLater, loading } = useCartStore()
+  // Use specific selectors so component re-renders when items change
+  const items = useCartStore((s) => s.items)
+  const loading = useCartStore((s) => s.loading)
+  const fetch = useCartStore((s) => s.fetch)
+  const updateQty = useCartStore((s) => s.updateQty)
+  const remove = useCartStore((s) => s.remove)
+  const saveForLater = useCartStore((s) => s.saveForLater)
   const user = useAuthStore((s) => s.user)
   const { toast } = useToast()
 
