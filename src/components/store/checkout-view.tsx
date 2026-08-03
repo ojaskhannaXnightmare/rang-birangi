@@ -80,7 +80,8 @@ export function CheckoutView() {
   const activeItems = items.filter((i) => !i.savedForLater)
   const subtotal = activeItems.reduce((s, i) => s + i.product.price * i.quantity, 0)
   const shippingCost = subtotal >= 999 ? 0 : 49
-  const total = subtotal + shippingCost
+  const codCharge = paymentMethod === 'COD' ? 30 : 0
+  const total = subtotal + shippingCost + codCharge
 
   // The address that will be used for the order
   // If user selected a saved address, use that. Otherwise use the form data.
@@ -453,18 +454,41 @@ export function CheckoutView() {
                           <p className="text-xs text-muted-foreground mt-1">Amount: {formatINR(total)}</p>
                         </div>
 
-                        {/* UPI Deep Link Button */}
-                        <a
-                          href={`upi://pay?pa=9559974558@ptaxis&pn=RANG%20BIRANGI&am=${total}&cu=INR&tn=Order%20${Date.now()}`}
-                          className="block w-full p-3 rounded-lg bg-gold-gradient text-background text-center font-medium hover:opacity-90 transition-opacity"
-                        >
-                          <Wallet className="h-4 w-4 inline mr-2" />
-                          Pay {formatINR(total)} via UPI App
-                        </a>
-
-                        <p className="text-xs text-center text-muted-foreground">
-                          ↑ Click above to open your UPI app (PhonePe, GPay, Paytm, BHIM)
-                        </p>
+                        {/* UPI App Buttons — individual deep links per app */}
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-2 text-center">
+                            Choose your UPI app to pay {formatINR(total)}:
+                          </p>
+                          <div className="grid grid-cols-2 gap-2">
+                            <a
+                              href={`phonepe://pay?pa=9559974558@ptaxis&pn=RANG%20BIRANGI&am=${total}&cu=INR&tn=Order%20${Date.now()}`}
+                              className="flex items-center justify-center gap-2 p-3 rounded-lg bg-[#5f259f] text-white text-sm font-medium hover:opacity-90 transition-opacity"
+                            >
+                              <span className="text-base">📱</span> PhonePe
+                            </a>
+                            <a
+                              href={`tez://upi/pay?pa=9559974558@ptaxis&pn=RANG%20BIRANGI&am=${total}&cu=INR&tn=Order%20${Date.now()}`}
+                              className="flex items-center justify-center gap-2 p-3 rounded-lg bg-[#1a73e8] text-white text-sm font-medium hover:opacity-90 transition-opacity"
+                            >
+                              <span className="text-base">💳</span> Google Pay
+                            </a>
+                            <a
+                              href={`paytmmp://pay?pa=9559974558@ptaxis&pn=RANG%20BIRANGI&am=${total}&cu=INR&tn=Order%20${Date.now()}`}
+                              className="flex items-center justify-center gap-2 p-3 rounded-lg bg-[#00baf2] text-white text-sm font-medium hover:opacity-90 transition-opacity"
+                            >
+                              <span className="text-base">💙</span> Paytm
+                            </a>
+                            <a
+                              href={`upi://pay?pa=9559974558@ptaxis&pn=RANG%20BIRANGI&am=${total}&cu=INR&tn=Order%20${Date.now()}`}
+                              className="flex items-center justify-center gap-2 p-3 rounded-lg bg-[#f97316] text-white text-sm font-medium hover:opacity-90 transition-opacity"
+                            >
+                              <span className="text-base">🔶</span> BHIM / Other
+                            </a>
+                          </div>
+                          <p className="text-xs text-center text-muted-foreground mt-2">
+                            Click an app above → pay → enter UTR below
+                          </p>
+                        </div>
 
                         <div className="h-px bg-border my-2" />
 
@@ -508,7 +532,7 @@ export function CheckoutView() {
                         <Label htmlFor="cod" className="font-medium cursor-pointer">Cash on Delivery</Label>
                         <p className="text-xs text-muted-foreground">Pay when you receive</p>
                       </div>
-                      <span className="text-xs text-yellow-500 font-medium">₹0 fees</span>
+                      <span className="text-xs text-yellow-500 font-medium">+₹30 fees</span>
                     </div>
                   </div>
                 </RadioGroup>
@@ -629,6 +653,12 @@ export function CheckoutView() {
                   {shippingCost === 0 ? 'FREE' : formatINR(shippingCost)}
                 </span>
               </div>
+              {codCharge > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">COD Charges</span>
+                  <span className="text-yellow-500 font-medium">{formatINR(codCharge)}</span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Tax</span>
                 <span className="text-green-500">Included</span>
