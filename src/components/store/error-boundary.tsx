@@ -48,11 +48,26 @@ function ErrorFallback({ error, resetErrorBoundary }: any) {
   )
 }
 
+/**
+ * Only wraps the main content area in an error boundary.
+ * Does NOT wrap the entire app — so auth modals, cart drawer, etc.
+ * still work even if the main content crashes.
+ *
+ * Also, this only catches RENDERING errors (component crashes),
+ * not API fetch failures (those are handled by individual components).
+ */
 export function AppErrorBoundary({ children }: { children: React.ReactNode }) {
   return (
     <ErrorBoundary
       FallbackComponent={ErrorFallback}
-      onReset={() => window.location.reload()}
+      onReset={() => {
+        // Just reset the boundary, don't reload the whole page
+        // The user can navigate to a different view
+      }}
+      onError={(error) => {
+        // Log to console but don't crash the whole app
+        console.error('App error caught by boundary:', error.message)
+      }}
     >
       {children}
     </ErrorBoundary>

@@ -55,15 +55,24 @@ export function StorefrontHome() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Auto-setup database on first load (creates all tables + seeds data)
-    // This is idempotent — safe to call every time
-    fetch('/api/setup-db', { method: 'POST' }).catch(() => {})
+    // Safe JSON fetch helper — handles all error cases gracefully
+    const safeFetch = async (url: string) => {
+      try {
+        const r = await fetch(url)
+        if (!r.ok) return {}
+        const ct = r.headers.get('content-type') || ''
+        if (!ct.includes('application/json')) return {}
+        return await r.json()
+      } catch {
+        return {}
+      }
+    }
 
     Promise.all([
-      fetch('/api/homepage').then((r) => r.json()),
-      fetch('/api/banners').then((r) => r.json()),
-      fetch('/api/categories').then((r) => r.json()),
-      fetch('/api/reviews?limit=6').then((r) => r.json()),
+      safeFetch('/api/homepage'),
+      safeFetch('/api/banners'),
+      safeFetch('/api/categories'),
+      safeFetch('/api/reviews?limit=6'),
     ]).then(([hp, bn, cat, rev]) => {
       setSections(hp.sections || [])
       setBanners(bn.banners || [])
@@ -71,21 +80,7 @@ export function StorefrontHome() {
       setReviews(rev.reviews || [])
       setLoading(false)
     }).catch(() => {
-      // Retry after a delay (database might still be setting up)
-      setTimeout(() => {
-        Promise.all([
-          fetch('/api/homepage').then((r) => r.json()),
-          fetch('/api/banners').then((r) => r.json()),
-          fetch('/api/categories').then((r) => r.json()),
-          fetch('/api/reviews?limit=6').then((r) => r.json()),
-        ]).then(([hp, bn, cat, rev]) => {
-          setSections(hp.sections || [])
-          setBanners(bn.banners || [])
-          setCategories(cat.categories || [])
-          setReviews(rev.reviews || [])
-          setLoading(false)
-        }).catch(() => setLoading(false))
-      }, 3000)
+      setLoading(false)
     })
   }, [])
 

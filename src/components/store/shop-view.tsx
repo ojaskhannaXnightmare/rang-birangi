@@ -58,14 +58,15 @@ export function ShopView({ categorySlug, filter }: ShopViewProps) {
   const [selectedColors, setSelectedColors] = useState<string[]>([])
   const [showFilters, setShowFilters] = useState(false)
 
-  // Fetch categories
+  // Fetch categories (non-blocking, silent failure)
   useEffect(() => {
     fetch('/api/categories')
-      .then((r) => r.json())
+      .then((r) => r.ok ? r.json() : Promise.reject())
       .then((d) => setCategories(d.categories || []))
+      .catch(() => {})
   }, [])
 
-  // Fetch products
+  // Fetch products (bulletproof — handles all error cases)
   useEffect(() => {
     let cancelled = false
     const params = new URLSearchParams()
@@ -75,8 +76,14 @@ export function ShopView({ categorySlug, filter }: ShopViewProps) {
     if (sort) params.set('sort', sort)
     if (priceRange[0] > 0) params.set('minPrice', String(priceRange[0]))
     if (priceRange[1] < 15000) params.set('maxPrice', String(priceRange[1]))
+
     fetch(`/api/products?${params.toString()}`)
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error('Server error')
+        const ct = r.headers.get('content-type') || ''
+        if (!ct.includes('application/json')) throw new Error('Not JSON')
+        return r.json()
+      })
       .then((data) => {
         if (cancelled) return
         setProducts(data.products || [])
@@ -84,6 +91,7 @@ export function ShopView({ categorySlug, filter }: ShopViewProps) {
       })
       .catch(() => {
         if (cancelled) return
+        setProducts([])
         setLoading(false)
       })
     return () => { cancelled = true }
