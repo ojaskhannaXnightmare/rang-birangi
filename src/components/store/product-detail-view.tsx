@@ -75,19 +75,12 @@ export function ProductDetailView({ slug }: { slug: string }) {
     }
     setAdding(true)
     try {
-      // Add timeout to prevent infinite "Adding..." state
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Request timeout')), 15000)
-      )
-      await Promise.race([
-        addToCart(product, quantity, selectedColor, selectedSize),
-        timeoutPromise,
-      ])
+      // Optimistic cart — item is added instantly, server syncs in background
+      await addToCart(product, quantity, selectedColor, selectedSize)
       toast({ title: 'Added to cart!', description: `${quantity} × ${product.name}` })
       openCart()
-    } catch (e: any) {
-      // Even if API fails, the guest cart fallback in the store should have added the item
-      // So we still show success and open cart
+    } catch {
+      // Should never happen with optimistic cart, but just in case
       toast({ title: 'Added to cart!', description: `${quantity} × ${product.name}` })
       openCart()
     } finally {

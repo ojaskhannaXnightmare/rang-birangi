@@ -16,10 +16,10 @@ export function Footer() {
               <img
                 src="/logo.png"
                 alt="RANG BIRANGI"
-                className="w-12 h-12 rounded-full object-cover border border-gold/30"
+                className="w-12 h-12 rounded-full object-cover border border-lavender/30"
               />
               <div className="flex flex-col leading-none">
-                <span className="text-lg font-display font-bold tracking-wider text-gradient-gold">
+                <span className="text-lg font-display font-bold tracking-wider text-gradient-lavender">
                   RANG BIRANGI
                 </span>
                 <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
@@ -33,7 +33,7 @@ export function Footer() {
             </p>
             <div className="flex gap-3">
               <a href="https://wa.me/919559974558" target="_blank" rel="noreferrer"
-                className="w-9 h-9 rounded-full glass flex items-center justify-center hover:bg-accent/20 transition-colors">
+                className="w-9 h-9 rounded-full glass flex items-center justify-center hover:bg-lavender/20 transition-colors">
                 <Mail className="h-4 w-4" />
               </a>
             </div>

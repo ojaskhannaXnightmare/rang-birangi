@@ -198,10 +198,10 @@ function SidebarContent({
           <img
             src="/logo.png"
             alt="RANG BIRANGI"
-            className="w-10 h-10 rounded-full object-cover border border-gold/30 flex-shrink-0"
+            className="w-10 h-10 rounded-full object-cover border border-lavender/30 flex-shrink-0"
           />
           <div className="flex flex-col leading-none">
-            <span className="text-sm font-display font-bold tracking-wider text-gradient-gold">
+            <span className="text-sm font-display font-bold tracking-wider text-gradient-lavender">
               RANG BIRANGI
             </span>
             <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">

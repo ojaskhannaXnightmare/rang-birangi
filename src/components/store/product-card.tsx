@@ -39,16 +39,10 @@ export function ProductCard({ product, index = 0 }: Props) {
     }
     setAdding(true)
     try {
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Request timeout')), 15000)
-      )
-      await Promise.race([
-        addToCart(product, 1),
-        timeoutPromise,
-      ])
+      // Optimistic cart — item is added instantly
+      await addToCart(product, 1)
       toast({ title: 'Added to cart!', description: product.name })
     } catch {
-      // Even if API fails, guest cart fallback should have added the item
       toast({ title: 'Added to cart!', description: product.name })
     } finally {
       setAdding(false)

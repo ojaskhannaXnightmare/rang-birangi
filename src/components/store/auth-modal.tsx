@@ -101,9 +101,9 @@ export function AuthModal() {
                   <img
                     src="/logo.png"
                     alt="RANG BIRANGI"
-                    className="w-10 h-10 rounded-full object-cover border border-gold/30"
+                    className="w-10 h-10 rounded-full object-cover border border-lavender/30"
                   />
-                  <span className="text-lg font-display font-bold tracking-wider text-gradient-gold">
+                  <span className="text-lg font-display font-bold tracking-wider text-gradient-lavender">
                     RANG BIRANGI
                   </span>
                 </div>

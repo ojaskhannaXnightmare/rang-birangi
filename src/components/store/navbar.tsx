@@ -45,7 +45,6 @@ export function Navbar() {
     e.preventDefault()
     if (searchValue.trim()) {
       setViewStore({ name: 'shop', filter: undefined, categorySlug: undefined })
-      // Use sessionStorage to pass search query
       sessionStorage.setItem('rb_search', searchValue)
       setSearchOpen(false)
     }
@@ -77,9 +76,9 @@ export function Navbar() {
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="glass-strong border-r border-gold/20 w-[280px]">
+              <SheetContent side="left" className="glass-strong border-r border-lavender/20 w-[280px]">
                 <SheetHeader>
-                  <SheetTitle className="text-gradient-gold text-2xl font-display">
+                  <SheetTitle className="text-gradient-lavender text-2xl font-display">
                     RANG BIRANGI
                   </SheetTitle>
                 </SheetHeader>
@@ -129,12 +128,12 @@ export function Navbar() {
                 <img
                   src="/logo.png"
                   alt="RANG BIRANGI"
-                  className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover border border-gold/30 group-hover:border-gold/60 transition-colors"
+                  className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover border border-lavender/30 group-hover:border-lavender/60 transition-colors"
                 />
-                <div className="absolute -inset-0.5 rounded-full bg-gradient-to-br from-accent/20 to-primary/20 blur-sm opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="absolute -inset-0.5 rounded-full bg-gradient-to-br from-lavender/20 to-purple/20 blur-sm opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
               <div className="hidden sm:flex flex-col leading-none">
-                <span className="text-lg font-display font-bold tracking-wider text-gradient-gold">
+                <span className="text-lg font-display font-bold tracking-wider text-gradient-lavender">
                   RANG BIRANGI
                 </span>
                 <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
@@ -149,10 +148,10 @@ export function Navbar() {
                 <button
                   key={link.categorySlug}
                   onClick={() => setView({ name: 'shop', categorySlug: link.categorySlug })}
-                  className="relative px-4 py-2 text-sm font-medium hover:text-accent transition-colors group"
+                  className="relative px-4 py-2 text-sm font-medium hover:text-lavender transition-colors group"
                 >
                   {link.label}
-                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0 h-px bg-accent group-hover:w-3/4 transition-all duration-300" />
+                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0 h-px bg-lavender group-hover:w-3/4 transition-all duration-300" />
                 </button>
               ))}
               <div className="w-px h-6 bg-border mx-2" />
@@ -164,7 +163,7 @@ export function Navbar() {
               </button>
               <button
                 onClick={() => setView({ name: 'shop', filter: 'new_arrivals' })}
-                className="relative px-4 py-2 text-sm font-medium hover:text-accent transition-colors"
+                className="relative px-4 py-2 text-sm font-medium hover:text-lavender transition-colors"
               >
                 New Arrivals
               </button>
@@ -172,17 +171,9 @@ export function Navbar() {
 
             {/* Right actions */}
             <div className="flex items-center gap-1 sm:gap-2">
-              {/* Search */}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setSearchOpen(!searchOpen)}
-                aria-label="Search"
-              >
+              <Button variant="ghost" size="icon" onClick={() => setSearchOpen(!searchOpen)} aria-label="Search">
                 <Search className="h-5 w-5" />
               </Button>
-
-              {/* Wishlist */}
               <Button
                 variant="ghost"
                 size="icon"
@@ -192,20 +183,12 @@ export function Navbar() {
               >
                 <Heart className="h-5 w-5" />
                 {wishlistCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-accent text-background text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                  <span className="absolute -top-1 -right-1 bg-lavender text-background text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
                     {wishlistCount}
                   </span>
                 )}
               </Button>
-
-              {/* Cart */}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={openCart}
-                aria-label="Cart"
-                className="relative"
-              >
+              <Button variant="ghost" size="icon" onClick={openCart} aria-label="Cart" className="relative">
                 <ShoppingBag className="h-5 w-5" />
                 {cartCount > 0 && (
                   <span className="absolute -top-1 -right-1 bg-accent text-background text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
@@ -213,8 +196,6 @@ export function Navbar() {
                   </span>
                 )}
               </Button>
-
-              {/* Account */}
               <Button
                 variant="ghost"
                 size="icon"

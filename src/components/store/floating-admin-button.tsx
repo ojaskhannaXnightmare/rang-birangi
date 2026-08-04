@@ -85,7 +85,7 @@ export function FloatingAdminButton() {
         animate={{ scale: 1, opacity: 1 }}
         transition={{ delay: 1, type: 'spring' }}
         onClick={() => setOpen(!open)}
-        className="fixed bottom-4 right-4 sm:bottom-5 sm:right-5 z-40 w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-luxe-gradient border-2 border-gold/40 flex items-center justify-center premium-shadow hover:scale-110 transition-transform group"
+        className="fixed bottom-4 right-4 sm:bottom-5 sm:right-5 z-40 w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-luxe-gradient border-2 border-lavender/40 flex items-center justify-center premium-shadow hover:scale-110 transition-transform group animate-glow"
         aria-label="Admin login"
         title="Admin Login"
       >
@@ -122,7 +122,7 @@ export function FloatingAdminButton() {
                   </button>
                   <div className="flex items-center gap-2 mb-1">
                     <Shield className="h-4 w-4 text-accent" />
-                    <span className="text-sm font-display font-bold text-gradient-gold">
+                    <span className="text-sm font-display font-bold text-gradient-lavender">
                       Admin Login
                     </span>
                   </div>

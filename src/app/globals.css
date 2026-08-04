@@ -39,52 +39,56 @@
   --color-card: var(--card);
   --color-gold: var(--gold);
   --color-luxe: var(--luxe);
+  --color-lavender: var(--lavender);
+  --color-purple: var(--purple);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 }
 
-/* ============= RANG BIRANGI Dark Luxury Theme ============= */
+/* ============= RANG BIRANGI Lavender/Purple/Gold/Black Theme ============= */
 :root {
   --radius: 0.75rem;
 
-  /* Brand palette (dark luxury is the DEFAULT look) */
-  --background: #0F0F10;
-  --foreground: #FFFFFF;
-  --card: #18181B;
-  --card-foreground: #FFFFFF;
-  --popover: #1F1F23;
-  --popover-foreground: #FFFFFF;
-  --primary: #7B1E3A;        /* deep maroon */
+  /* Brand palette */
+  --background: #0A0A0F;
+  --foreground: #F5F5FA;
+  --card: #131320;
+  --card-foreground: #F5F5FA;
+  --popover: #1A1A2E;
+  --popover-foreground: #F5F5FA;
+  --primary: #8B5CF6;
   --primary-foreground: #FFFFFF;
-  --secondary: #27272A;
-  --secondary-foreground: #FFFFFF;
-  --muted: #1F1F23;
-  --muted-foreground: #A1A1AA;
-  --accent: #D4AF37;         /* luxury gold */
-  --accent-foreground: #0F0F10;
+  --secondary: #1E1E32;
+  --secondary-foreground: #F5F5FA;
+  --muted: #1A1A2E;
+  --muted-foreground: #9CA3AF;
+  --accent: #E8B84B;
+  --accent-foreground: #0A0A0F;
   --destructive: #EF4444;
-  --border: #27272A;
-  --input: #27272A;
-  --ring: #D4AF37;
-  --gold: #D4AF37;
-  --luxe: #7B1E3A;
+  --border: #2A2A3E;
+  --input: #2A2A3E;
+  --ring: #C4B5FD;
+  --gold: #E8B84B;
+  --luxe: #8B5CF6;
+  --lavender: #C4B5FD;
+  --purple: #7C3AED;
 
-  --chart-1: #D4AF37;
-  --chart-2: #7B1E3A;
-  --chart-3: #A1A1AA;
-  --chart-4: #F59E0B;
+  --chart-1: #E8B84B;
+  --chart-2: #8B5CF6;
+  --chart-3: #C4B5FD;
+  --chart-4: #7C3AED;
   --chart-5: #EF4444;
 
-  --sidebar: #0A0A0B;
-  --sidebar-foreground: #FFFFFF;
-  --sidebar-primary: #D4AF37;
-  --sidebar-primary-foreground: #0F0F10;
-  --sidebar-accent: #18181B;
-  --sidebar-accent-foreground: #FFFFFF;
-  --sidebar-border: #27272A;
-  --sidebar-ring: #D4AF37;
+  --sidebar: #08080C;
+  --sidebar-foreground: #F5F5FA;
+  --sidebar-primary: #C4B5FD;
+  --sidebar-primary-foreground: #0A0A0F;
+  --sidebar-accent: #131320;
+  --sidebar-accent-foreground: #F5F5FA;
+  --sidebar-border: #2A2A3E;
+  --sidebar-ring: #C4B5FD;
 }
 
 @layer base {
@@ -96,27 +100,25 @@
     font-feature-settings: "ss01", "cv01";
   }
   body {
-    background-color: #0F0F10;
+    background-color: #0A0A0F;
     background-image:
-      radial-gradient(circle at 0% 0%, rgba(123, 30, 58, 0.08) 0%, transparent 50%),
-      radial-gradient(circle at 100% 100%, rgba(212, 175, 55, 0.05) 0%, transparent 50%);
+      radial-gradient(circle at 15% 15%, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
+      radial-gradient(circle at 85% 85%, rgba(196, 181, 253, 0.08) 0%, transparent 50%),
+      radial-gradient(circle at 50% 50%, rgba(232, 184, 75, 0.04) 0%, transparent 70%);
     background-attachment: fixed;
     min-height: 100vh;
   }
 
-  /* Custom scrollbar */
-  ::-webkit-scrollbar { width: 10px; height: 10px; }
-  ::-webkit-scrollbar-track { background: #0F0F10; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: #0A0A0F; }
   ::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, #7B1E3A, #D4AF37);
+    background: linear-gradient(180deg, #8B5CF6, #C4B5FD);
     border-radius: 6px;
-    border: 2px solid #0F0F10;
   }
-  ::-webkit-scrollbar-thumb:hover { background: #D4AF37; }
+  ::-webkit-scrollbar-thumb:hover { background: #C4B5FD; }
 
-  /* Selection */
   ::selection {
-    background: rgba(212, 175, 55, 0.3);
+    background: rgba(196, 181, 253, 0.3);
     color: #FFFFFF;
   }
 }
@@ -124,69 +126,71 @@
 /* ============= Utility classes ============= */
 @layer utilities {
   .glass {
-    background: rgba(24, 24, 27, 0.6);
+    background: rgba(19, 19, 32, 0.6);
     backdrop-filter: blur(16px) saturate(180%);
     -webkit-backdrop-filter: blur(16px) saturate(180%);
-    border: 1px solid rgba(212, 175, 55, 0.15);
+    border: 1px solid rgba(196, 181, 253, 0.15);
   }
   .glass-strong {
-    background: rgba(15, 15, 16, 0.85);
+    background: rgba(10, 10, 15, 0.85);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border: 1px solid rgba(212, 175, 55, 0.2);
+    border: 1px solid rgba(196, 181, 253, 0.2);
   }
   .premium-shadow {
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(212, 175, 55, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(196, 181, 253, 0.1);
   }
   .gold-shadow {
-    box-shadow: 0 8px 32px rgba(212, 175, 55, 0.25), 0 0 0 1px rgba(212, 175, 55, 0.2);
+    box-shadow: 0 8px 32px rgba(232, 184, 75, 0.25), 0 0 0 1px rgba(232, 184, 75, 0.2);
   }
   .luxe-shadow {
-    box-shadow: 0 8px 32px rgba(123, 30, 58, 0.4), 0 0 0 1px rgba(123, 30, 58, 0.3);
+    box-shadow: 0 8px 32px rgba(139, 92, 246, 0.4), 0 0 0 1px rgba(139, 92, 246, 0.3);
   }
   .text-gradient-gold {
-    background: linear-gradient(135deg, #D4AF37 0%, #F4D670 50%, #D4AF37 100%);
+    background: linear-gradient(135deg, #E8B84B 0%, #F4D670 50%, #E8B84B 100%);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
     color: transparent;
   }
-  .text-gradient-luxe {
-    background: linear-gradient(135deg, #7B1E3A 0%, #D4AF37 100%);
+  .text-gradient-lavender {
+    background: linear-gradient(135deg, #C4B5FD 0%, #E9D5FF 50%, #C4B5FD 100%);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
     color: transparent;
   }
-  .border-gold {
-    border-color: rgba(212, 175, 55, 0.3);
+  .text-gradient-purple {
+    background: linear-gradient(135deg, #8B5CF6 0%, #C4B5FD 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
   }
-  .border-luxe {
-    border-color: rgba(123, 30, 58, 0.4);
-  }
+  .border-gold { border-color: rgba(232, 184, 75, 0.3); }
+  .border-lavender { border-color: rgba(196, 181, 253, 0.3); }
+  .border-purple { border-color: rgba(139, 92, 246, 0.3); }
   .bg-luxe-gradient {
-    background: linear-gradient(135deg, #7B1E3A 0%, #5A1428 100%);
+    background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
   }
   .bg-gold-gradient {
-    background: linear-gradient(135deg, #D4AF37 0%, #B8941F 100%);
+    background: linear-gradient(135deg, #E8B84B 0%, #D4A017 100%);
+  }
+  .bg-purple-gradient {
+    background: linear-gradient(135deg, #7C3AED 0%, #8B5CF6 50%, #C4B5FD 100%);
   }
   .bg-card-gradient {
-    background: linear-gradient(135deg, #18181B 0%, #1F1F23 100%);
+    background: linear-gradient(135deg, #131320 0%, #1A1A2E 100%);
   }
   .hover-lift {
     transition: transform 0.3s ease, box-shadow 0.3s ease;
   }
   .hover-lift:hover {
     transform: translateY(-4px);
-    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(212, 175, 55, 0.2);
+    box-shadow: 0 16px 48px rgba(139, 92, 246, 0.3), 0 0 0 1px rgba(196, 181, 253, 0.2);
   }
   .animate-shimmer {
-    background: linear-gradient(
-      90deg,
-      transparent 0%,
-      rgba(212, 175, 55, 0.1) 50%,
-      transparent 100%
-    );
+    background: linear-gradient(90deg, transparent 0%, rgba(196, 181, 253, 0.1) 50%, transparent 100%);
     background-size: 200% 100%;
     animation: shimmer 2s infinite;
   }
@@ -216,8 +220,8 @@
 }
 
 @keyframes scaleIn {
-  from { opacity: 0; transform: scale(0.96); }
-  to { opacity: 1; transform: scale(1); }
+  from { opacity: 0; scale: 0.96; }
+  to { opacity: 1; scale: 1; }
 }
 
 .animate-scale-in {
@@ -233,13 +237,20 @@
   animation: slideUp 0.5s ease-out;
 }
 
-/* Heading typography */
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 5px rgba(196, 181, 253, 0.3); }
+  50% { box-shadow: 0 0 20px rgba(196, 181, 253, 0.6), 0 0 40px rgba(139, 92, 246, 0.3); }
+}
+
+.animate-glow {
+  animation: glow 2s ease-in-out infinite;
+}
+
 .font-display {
   font-family: var(--font-geist-sans), system-ui, sans-serif;
   letter-spacing: -0.02em;
   font-weight: 700;
 }
 
-/* Hide scrollbar but keep functional */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
