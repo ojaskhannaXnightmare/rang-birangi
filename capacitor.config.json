@@ -1,0 +1,22 @@
+{
+  "appId": "com.rangbirangi.app",
+  "appName": "RANG BIRANGI",
+  "webDir": "out",
+  "server": {
+    "androidScheme": "https",
+    "url": "https://rang-birangi.vercel.app",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true,
+    "backgroundColor": "#0F0F10"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "backgroundColor": "#0F0F10",
+      "showSpinner": false,
+      "androidSplashResourceName": "splash"
+    }
+  }
+}

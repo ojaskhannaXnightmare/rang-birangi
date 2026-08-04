@@ -5,6 +5,7 @@ import { useUIStore } from '@/stores/ui-store'
 import { useAuthStore } from '@/stores/auth-store'
 import { useCartStore } from '@/stores/cart-store'
 import { useWishlistStore } from '@/stores/wishlist-store'
+import { useUrlRouter } from '@/lib/use-url-router'
 
 import { Navbar } from '@/components/store/navbar'
 import { Footer } from '@/components/store/footer'
@@ -26,6 +27,9 @@ export default function Home() {
   const fetchUser = useAuthStore((s) => s.fetchUser)
   const fetchCart = useCartStore((s) => s.fetch)
   const fetchWishlist = useWishlistStore((s) => s.fetch)
+
+  // Enable URL hash routing (e.g. #/shop, #/login, #/product/slug)
+  useUrlRouter()
 
   // Initial load: fetch user, cart, wishlist (all silent — no error toasts)
   useEffect(() => {

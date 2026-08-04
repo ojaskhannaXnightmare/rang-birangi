@@ -81,15 +81,16 @@ export function AuthModal() {
             onClick={closeAuth}
             className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50"
           />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md mx-4 z-50"
-          >
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="w-full max-w-md my-auto"
+            >
             <div className="glass-strong premium-shadow rounded-2xl border border-gold/20 overflow-hidden">
               {/* Header */}
-              <div className="relative p-6 bg-luxe-gradient">
+              <div className="relative p-5 sm:p-6 bg-luxe-gradient">
                 <button
                   onClick={closeAuth}
                   className="absolute top-4 right-4 w-8 h-8 rounded-full glass flex items-center justify-center hover:bg-accent/20"
@@ -200,7 +201,8 @@ export function AuthModal() {
                 </p>
               </form>
             </div>
-          </motion.div>
+            </motion.div>
+          </div>
         </>
       )}
     </AnimatePresence>

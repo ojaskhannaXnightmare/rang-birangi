@@ -104,12 +104,13 @@ export function FloatingAdminButton() {
               onClick={() => setOpen(false)}
               className="fixed inset-0 bg-background/60 backdrop-blur-sm z-40"
             />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="fixed bottom-24 right-5 z-50 w-[340px] max-w-[calc(100vw-2.5rem)]"
-            >
+            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:justify-end p-4 sm:p-6 overflow-y-auto">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className="w-full max-w-[340px] my-auto sm:mr-0"
+              >
               <div className="glass-strong premium-shadow rounded-2xl border border-gold/30 overflow-hidden">
                 {/* Header */}
                 <div className="relative p-4 bg-luxe-gradient">
@@ -173,7 +174,8 @@ export function FloatingAdminButton() {
                   </Button>
                 </form>
               </div>
-            </motion.div>
+              </motion.div>
+            </div>
           </>
         )}
       </AnimatePresence>
