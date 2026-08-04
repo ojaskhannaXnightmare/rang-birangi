@@ -130,8 +130,8 @@ export async function POST() {
         status: 'ACTIVE',
         avatarUrl: null,
       })
-      await create(COLLECTIONS.CART, { userId: admin.id, items: [] })
-      await create(COLLECTIONS.WISHLIST, { userId: admin.id, items: [] })
+      await create(COLLECTIONS.CART, { userId: admin.id })
+      await create(COLLECTIONS.WISHLIST, { userId: admin.id })
       results.admin = true
     } else {
       // Ensure password is RB_1122 (in case it was changed)

@@ -10,7 +10,8 @@ async function getWishlistItems(userId: string) {
     { field: 'userId', op: '==', value: userId },
   ])
   if (!wishlist) {
-    wishlist = await create<any>(COLLECTIONS.WISHLIST, { userId, items: [] })
+    // Don't send 'items' field — wishlist table doesn't have it
+    wishlist = await create<any>(COLLECTIONS.WISHLIST, { userId })
   }
   const items = await findMany<any>(COLLECTIONS.WISHLIST_ITEMS, [
     { field: 'wishlistId', op: '==', value: wishlist.id },
@@ -63,7 +64,7 @@ export async function POST(req: NextRequest) {
       { field: 'userId', op: '==', value: session.id },
     ])
     if (!wishlist) {
-      wishlist = await create<any>(COLLECTIONS.WISHLIST, { userId: session.id, items: [] })
+      wishlist = await create<any>(COLLECTIONS.WISHLIST, { userId: session.id })
     }
     const existing = await findMany<any>(COLLECTIONS.WISHLIST_ITEMS, [
       { field: 'wishlistId', op: '==', value: wishlist.id },

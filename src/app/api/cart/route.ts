@@ -10,7 +10,9 @@ async function getOrCreateCart(userId: string) {
     { field: 'userId', op: '==', value: userId },
   ])
   if (!cart) {
-    cart = await create<any>(COLLECTIONS.CART, { userId, items: [] })
+    // Don't send 'items' field — cart table doesn't have it
+    // Cart items are stored in cart_items table (separate)
+    cart = await create<any>(COLLECTIONS.CART, { userId })
   }
   return cart
 }

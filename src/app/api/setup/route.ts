@@ -84,8 +84,8 @@ export async function POST(_req: NextRequest) {
       status: 'ACTIVE',
       avatarUrl: null,
     })
-    await create(COLLECTIONS.CART, { userId: admin.id, items: [] })
-    await create(COLLECTIONS.WISHLIST, { userId: admin.id, items: [] })
+    await create(COLLECTIONS.CART, { userId: admin.id })
+    await create(COLLECTIONS.WISHLIST, { userId: admin.id })
 
     return NextResponse.json({
       success: true,
