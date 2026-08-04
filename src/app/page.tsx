@@ -19,6 +19,7 @@ import { AuthModal } from '@/components/store/auth-modal'
 import { CustomerDashboard } from '@/components/store/customer-dashboard'
 import { FloatingAdminButton } from '@/components/store/floating-admin-button'
 import { DatabaseSetupBanner } from '@/components/store/database-setup-banner'
+import { AppErrorBoundary } from '@/components/store/error-boundary'
 import { AdminPanel } from '@/components/admin/admin-panel'
 
 export default function Home() {
@@ -48,16 +49,17 @@ export default function Home() {
   // Admin view: full-screen layout (no navbar/footer)
   if (view.name === 'admin') {
     return (
-      <>
+      <AppErrorBoundary>
         <DatabaseSetupBanner />
         <AdminPanel tab={view.tab} />
         <AuthModal />
         <FloatingAdminButton />
-      </>
+      </AppErrorBoundary>
     )
   }
 
   return (
+    <AppErrorBoundary>
     <div className="min-h-screen flex flex-col">
       <DatabaseSetupBanner />
       <Navbar />
@@ -85,6 +87,7 @@ export default function Home() {
       <AuthModal />
       <FloatingAdminButton />
     </div>
+    </AppErrorBoundary>
   )
 }
 
