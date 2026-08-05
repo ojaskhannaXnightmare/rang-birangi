@@ -48,7 +48,9 @@ export function CheckoutView() {
   const [paymentRef, setPaymentRef] = useState('')
   const [processing, setProcessing] = useState(false)
 
-  const { items, fetch } = useCartStore()
+  const items = useCartStore((s) => s.items)
+  const fetch = useCartStore((s) => s.fetch)
+  const clearCart = useCartStore((s) => s.clear)
   const setView = useUIStore((s) => s.setView)
   const user = useAuthStore((s) => s.user)
   const { toast } = useToast()
@@ -157,6 +159,11 @@ export function CheckoutView() {
       setStep('payment')
       return
     }
+    if (activeItems.length === 0) {
+      toast({ title: 'Your cart is empty', variant: 'destructive' })
+      setView({ name: 'home' })
+      return
+    }
 
     setProcessing(true)
     try {
@@ -168,27 +175,45 @@ export function CheckoutView() {
           paymentMethod,
           paymentRef: paymentRef || undefined,
           upiId: upiId || undefined,
+          items: activeItems.map((item) => ({
+            id: item.id,
+            productId: item.productId,
+            quantity: item.quantity,
+            color: item.color,
+            size: item.size,
+          })),
         }),
       })
 
       if (!res) {
-        throw new Error('No response from server')
+        throw new Error('No response from server. Please check your connection.')
       }
 
       let data: any
       try {
         data = await res.json()
       } catch {
-        throw new Error('Server returned invalid response. Please try again.')
+        throw new Error('Server returned an invalid response. Please try again.')
       }
 
       if (res.ok && data.orderId) {
+        // Clear cart
+        clearCart()
+        // Navigate to success page
         setView({ name: 'order-success', orderId: data.orderId })
       } else {
-        toast({ title: 'Checkout failed', description: data.error || 'Unknown error', variant: 'destructive' })
+        toast({
+          title: 'Checkout failed',
+          description: data.error || 'Could not create order. Please try again.',
+          variant: 'destructive'
+        })
       }
     } catch (e: any) {
-      toast({ title: 'Error', description: e.message || 'Something went wrong', variant: 'destructive' })
+      toast({
+        title: 'Order failed',
+        description: e.message || 'Something went wrong. Please try again.',
+        variant: 'destructive'
+      })
     } finally {
       setProcessing(false)
     }

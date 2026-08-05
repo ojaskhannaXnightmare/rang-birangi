@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import {
-  CheckCircle2, Package, Truck, Mail, ArrowRight, Copy,
+  CheckCircle2, Package, Truck, Mail, ArrowRight, Copy, Sparkles,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useUIStore } from '@/stores/ui-store'
@@ -17,40 +17,94 @@ export function OrderSuccessView({ orderId }: { orderId: string }) {
 
   useEffect(() => {
     clearCart()
-    fetch(`/api/orders/${orderId}`)
-      .then((r) => r.json())
-      .then((d) => setOrder(d.order))
+    // Safe fetch — handles errors gracefully
+    const fetchOrder = async () => {
+      try {
+        const r = await fetch(`/api/orders/${orderId}`)
+        if (!r.ok) return
+        const ct = r.headers.get('content-type') || ''
+        if (!ct.includes('application/json')) return
+        const d = await r.json()
+        setOrder(d.order)
+      } catch {}
+    }
+    fetchOrder()
   }, [orderId, clearCart])
 
   if (!order) {
     return (
       <div className="container mx-auto px-4 py-16 text-center">
-        <div className="animate-pulse">Loading order...</div>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="flex flex-col items-center gap-4"
+        >
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+            className="w-12 h-12 rounded-full border-2 border-lavender border-t-transparent"
+          />
+          <p className="text-muted-foreground">Loading your order...</p>
+        </motion.div>
       </div>
     )
   }
 
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-3xl">
+      {/* Success celebration animation */}
       <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
+        initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1 }}
+        transition={{ type: 'spring', stiffness: 200 }}
         className="text-center mb-8"
       >
         <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ delay: 0.2, type: 'spring' }}
-          className="w-20 h-20 mx-auto mb-4 rounded-full bg-green-500/20 flex items-center justify-center"
+          initial={{ scale: 0, rotate: -180 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+          className="w-24 h-24 mx-auto mb-4 rounded-full bg-green-500/20 flex items-center justify-center relative"
         >
-          <CheckCircle2 className="h-12 w-12 text-green-500" />
+          <CheckCircle2 className="h-14 w-14 text-green-500" />
+          {/* Pulsing rings */}
+          {[0, 1, 2].map((i) => (
+            <motion.div
+              key={i}
+              initial={{ scale: 1, opacity: 0.5 }}
+              animate={{ scale: 2, opacity: 0 }}
+              transition={{ duration: 2, repeat: Infinity, delay: i * 0.5 }}
+              className="absolute inset-0 rounded-full border-2 border-green-500"
+            />
+          ))}
         </motion.div>
-        <h1 className="text-3xl md:text-4xl font-display font-bold text-gradient-gold mb-2">
+        {/* Sparkles */}
+        {[0, 1, 2, 3, 4].map((i) => (
+          <motion.div
+            key={`spark-${i}`}
+            initial={{ opacity: 0, scale: 0 }}
+            animate={{ opacity: [0, 1, 0], scale: [0, 1, 0] }}
+            transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.3 }}
+            className="inline-block mx-1"
+          >
+            <Sparkles className="h-4 w-4 text-lavender" />
+          </motion.div>
+        ))}
+        <motion.h1
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="text-3xl md:text-4xl font-display font-bold text-gradient-lavender mb-2"
+        >
           Order Confirmed!
-        </h1>
-        <p className="text-muted-foreground">
+        </motion.h1>
+        <motion.p
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="text-muted-foreground"
+        >
           Thank you for shopping with RANG BIRANGI. Your order has been placed successfully.
-        </p>
+        </motion.p>
       </motion.div>
 
       {/* Order details card */}
