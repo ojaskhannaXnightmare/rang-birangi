@@ -47,6 +47,7 @@ export function CheckoutView() {
   const [upiId, setUpiId] = useState('')
   const [paymentRef, setPaymentRef] = useState('')
   const [processing, setProcessing] = useState(false)
+  const [pendingOrderId, setPendingOrderId] = useState<string | null>(null)
 
   const items = useCartStore((s) => s.items)
   const fetch = useCartStore((s) => s.fetch)
@@ -59,11 +60,61 @@ export function CheckoutView() {
     fetch()
   }, [fetch])
 
+  // ============ RESTORE CHECKOUT STATE AFTER UPI REDIRECT ============
+  // Use lazy initializer to restore state synchronously on first render
+  const [restoredState] = useState(() => {
+    if (typeof window === 'undefined') return null
+    const savedState = sessionStorage.getItem('rb_checkout_state')
+    if (!savedState) return null
+    try {
+      return JSON.parse(savedState)
+    } catch {
+      return null
+    }
+  })
+
+  // Apply restored state once on mount
+  useEffect(() => {
+    if (!restoredState) return
+    // Use setTimeout to defer state updates out of the effect body
+    setTimeout(() => {
+      if (restoredState.step) setStep(restoredState.step)
+      if (restoredState.paymentMethod) setPaymentMethod(restoredState.paymentMethod)
+      if (restoredState.upiId) setUpiId(restoredState.upiId)
+      if (restoredState.paymentRef) setPaymentRef(restoredState.paymentRef)
+      if (restoredState.pendingOrderId) setPendingOrderId(restoredState.pendingOrderId)
+      if (restoredState.newAddress) setNewAddress(restoredState.newAddress)
+      if (restoredState.selectedAddressId) {
+        setSelectedAddressId(restoredState.selectedAddressId)
+        setShowAddressForm(false)
+      }
+      if (restoredState.pendingOrderId) {
+        toast({ title: 'Welcome back!', description: 'Enter your UTR number to complete the order.' })
+      }
+    }, 0)
+  }, [])
+
+  // ============ SAVE CHECKOUT STATE ON CHANGES ============
+  useEffect(() => {
+    const state = {
+      step,
+      paymentMethod,
+      upiId,
+      paymentRef,
+      pendingOrderId,
+      newAddress,
+      selectedAddressId,
+    }
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('rb_checkout_state', JSON.stringify(state))
+    }
+  }, [step, paymentMethod, upiId, paymentRef, pendingOrderId, newAddress, selectedAddressId])
+
   // Load saved addresses (non-blocking — if it fails, just show the form)
   useEffect(() => {
     if (!user) return
     fetch('/api/addresses')
-      .then((r) => r.json())
+      .then((r) => r.ok ? r.json() : Promise.reject())
       .then((d) => {
         if (d && d.addresses && d.addresses.length > 0) {
           setAddresses(d.addresses)
@@ -74,9 +125,7 @@ export function CheckoutView() {
           }
         }
       })
-      .catch(() => {
-        // If addresses API fails, just show the form — no big deal
-      })
+      .catch(() => {})
   }, [user])
 
   const activeItems = items.filter((i) => !i.savedForLater)
@@ -147,6 +196,49 @@ export function CheckoutView() {
     setStep('review')
   }
 
+  // ============ CREATE PENDING ORDER (before UPI redirect) ============
+  const createPendingOrder = async () => {
+    if (!selectedAddress) {
+      toast({ title: 'Please select an address first', variant: 'destructive' })
+      setStep('address')
+      return
+    }
+    try {
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          address: selectedAddress,
+          paymentMethod: 'UPI',
+          paymentRef: null,
+          upiId: upiId || undefined,
+          items: activeItems.map((item) => ({
+            id: item.id,
+            productId: item.productId,
+            quantity: item.quantity,
+            color: item.color,
+            size: item.size,
+          })),
+          pending: true, // Create as pending order (don't reduce stock yet)
+        }),
+      })
+
+      let data: any
+      try {
+        data = await res.json()
+      } catch {
+        return // Silent fail — user can still pay manually
+      }
+
+      if (res.ok && data.orderId) {
+        setPendingOrderId(data.orderId)
+        toast({ title: 'Order initiated!', description: 'Complete payment in UPI app' })
+      }
+    } catch {
+      // Silent fail — user can still pay and enter UTR manually
+    }
+  }
+
   // ============ REVIEW STEP ============ PLACE ORDER ============
   const handlePlaceOrder = async () => {
     if (!selectedAddress) {
@@ -155,17 +247,63 @@ export function CheckoutView() {
       return
     }
     if (paymentMethod === 'UPI' && !paymentRef) {
-      toast({ title: 'Please enter UPI payment reference', variant: 'destructive' })
+      toast({ title: 'Please enter UPI payment reference (UTR)', variant: 'destructive' })
       setStep('payment')
       return
     }
-    if (activeItems.length === 0) {
+    if (activeItems.length === 0 && !pendingOrderId) {
       toast({ title: 'Your cart is empty', variant: 'destructive' })
       setView({ name: 'home' })
       return
     }
 
     setProcessing(true)
+
+    // If we have a pending order, verify it (don't create a new one)
+    if (pendingOrderId) {
+      try {
+        const res = await fetch('/api/checkout/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderId: pendingOrderId,
+            paymentRef,
+            upiId: upiId || undefined,
+          }),
+        })
+
+        let data: any
+        try {
+          data = await res.json()
+        } catch {
+          throw new Error('Server returned an invalid response. Please try again.')
+        }
+
+        if (res.ok && data.success) {
+          clearCart()
+          // Clear checkout state
+          if (typeof window !== 'undefined') sessionStorage.removeItem('rb_checkout_state')
+          setView({ name: 'order-success', orderId: pendingOrderId })
+        } else {
+          toast({
+            title: 'Verification failed',
+            description: data.error || 'Could not verify payment. Please try again.',
+            variant: 'destructive'
+          })
+        }
+      } catch (e: any) {
+        toast({
+          title: 'Order failed',
+          description: e.message || 'Something went wrong. Please try again.',
+          variant: 'destructive'
+        })
+      } finally {
+        setProcessing(false)
+      }
+      return
+    }
+
+    // No pending order — create order directly (COD or UPI without pending)
     try {
       const res = await fetch('/api/checkout', {
         method: 'POST',
@@ -197,9 +335,8 @@ export function CheckoutView() {
       }
 
       if (res.ok && data.orderId) {
-        // Clear cart
         clearCart()
-        // Navigate to success page
+        if (typeof window !== 'undefined') sessionStorage.removeItem('rb_checkout_state')
         setView({ name: 'order-success', orderId: data.orderId })
       } else {
         toast({
@@ -479,39 +616,76 @@ export function CheckoutView() {
                           <p className="text-xs text-muted-foreground mt-1">Amount: {formatINR(total)}</p>
                         </div>
 
-                        {/* UPI App Buttons — individual deep links per app */}
+                        {/* Pending order notice (if created) */}
+                        {pendingOrderId && (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="p-3 rounded-lg bg-purple/10 border border-purple/30 text-center"
+                          >
+                            <p className="text-sm text-lavender font-medium">
+                              ✅ Pending order created
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Pay via UPI app, then enter the UTR number below to confirm your order.
+                            </p>
+                          </motion.div>
+                        )}
+
+                        {/* UPI App Buttons — creates pending order, then redirects */}
                         <div>
                           <p className="text-xs text-muted-foreground mb-2 text-center">
                             Choose your UPI app to pay {formatINR(total)}:
                           </p>
                           <div className="grid grid-cols-2 gap-2">
                             <a
-                              href={`phonepe://pay?pa=9559974558@ptaxis&pn=RANG%20BIRANGI&am=${total}&cu=INR&tn=Order%20${Date.now()}`}
+                              href={`phonepe://pay?pa=9559974558@ptaxis&pn=RANG%20BIRANGI&am=${total}&cu=INR&tn=Order%20${pendingOrderId || Date.now()}`}
                               className="flex items-center justify-center gap-2 p-3 rounded-lg bg-[#5f259f] text-white text-sm font-medium hover:opacity-90 transition-opacity"
+                              onClick={async (e) => {
+                                // Create pending order before redirecting
+                                if (!pendingOrderId) {
+                                  await createPendingOrder()
+                                }
+                              }}
                             >
                               <span className="text-base">📱</span> PhonePe
                             </a>
                             <a
-                              href={`tez://upi/pay?pa=9559974558@ptaxis&pn=RANG%20BIRANGI&am=${total}&cu=INR&tn=Order%20${Date.now()}`}
+                              href={`tez://upi/pay?pa=9559974558@ptaxis&pn=RANG%20BIRANGI&am=${total}&cu=INR&tn=Order%20${pendingOrderId || Date.now()}`}
                               className="flex items-center justify-center gap-2 p-3 rounded-lg bg-[#1a73e8] text-white text-sm font-medium hover:opacity-90 transition-opacity"
+                              onClick={async (e) => {
+                                if (!pendingOrderId) {
+                                  await createPendingOrder()
+                                }
+                              }}
                             >
                               <span className="text-base">💳</span> Google Pay
                             </a>
                             <a
-                              href={`paytmmp://pay?pa=9559974558@ptaxis&pn=RANG%20BIRANGI&am=${total}&cu=INR&tn=Order%20${Date.now()}`}
+                              href={`paytmmp://pay?pa=9559974558@ptaxis&pn=RANG%20BIRANGI&am=${total}&cu=INR&tn=Order%20${pendingOrderId || Date.now()}`}
                               className="flex items-center justify-center gap-2 p-3 rounded-lg bg-[#00baf2] text-white text-sm font-medium hover:opacity-90 transition-opacity"
+                              onClick={async (e) => {
+                                if (!pendingOrderId) {
+                                  await createPendingOrder()
+                                }
+                              }}
                             >
                               <span className="text-base">💙</span> Paytm
                             </a>
                             <a
-                              href={`upi://pay?pa=9559974558@ptaxis&pn=RANG%20BIRANGI&am=${total}&cu=INR&tn=Order%20${Date.now()}`}
+                              href={`upi://pay?pa=9559974558@ptaxis&pn=RANG%20BIRANGI&am=${total}&cu=INR&tn=Order%20${pendingOrderId || Date.now()}`}
                               className="flex items-center justify-center gap-2 p-3 rounded-lg bg-[#f97316] text-white text-sm font-medium hover:opacity-90 transition-opacity"
+                              onClick={async (e) => {
+                                if (!pendingOrderId) {
+                                  await createPendingOrder()
+                                }
+                              }}
                             >
                               <span className="text-base">🔶</span> BHIM / Other
                             </a>
                           </div>
                           <p className="text-xs text-center text-muted-foreground mt-2">
-                            Click an app above → pay → enter UTR below
+                            Click an app → pay → return here → enter UTR below
                           </p>
                         </div>
 

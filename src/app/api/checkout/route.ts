@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const { address, paymentMethod, paymentRef, upiId, items: clientItems } = body
+    const { address, paymentMethod, paymentRef, upiId, items: clientItems, pending } = body
 
     // 3. Validate address
     if (!address || !address.fullName || !address.phone || !address.city) {
@@ -134,10 +134,11 @@ export async function POST(req: NextRequest) {
     // 9. Determine payment status
     let paymentStatus = 'PENDING'
     let orderStatus = 'PENDING_PAYMENT'
-    if (paymentMethod === 'UPI') {
+    if (paymentMethod === 'UPI' && !pending) {
       paymentStatus = 'PAID'
       orderStatus = 'CONFIRMED'
     }
+    // If pending=true, order stays as PENDING_PAYMENT regardless of method
 
     // 10. Generate order number
     const orderNumber = `RB${Date.now().toString().slice(-8)}`
@@ -185,16 +186,18 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 13. Reduce stock
-    for (let i = 0; i < products.length; i++) {
-      const product = products[i]
-      const item = cartItems[i]
-      try {
-        await update(COLLECTIONS.PRODUCTS, product.id, {
-          stock: Math.max(0, (product.stock || 0) - item.quantity),
-        })
-      } catch (e) {
-        console.error('Stock update error:', e)
+    // 13. Reduce stock (skip if pending order — will reduce on verification)
+    if (!pending) {
+      for (let i = 0; i < products.length; i++) {
+        const product = products[i]
+        const item = cartItems[i]
+        try {
+          await update(COLLECTIONS.PRODUCTS, product.id, {
+            stock: Math.max(0, (product.stock || 0) - item.quantity),
+          })
+        } catch (e) {
+          console.error('Stock update error:', e)
+        }
       }
     }
 
@@ -229,8 +232,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 16. Clear cart items from DB
-    if (cartId) {
+    // 16. Clear cart items from DB (skip if pending)
+    if (!pending && cartId) {
       for (const item of cartItems) {
         try {
           if (item.id && !item.id.startsWith('item_')) {
